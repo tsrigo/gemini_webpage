@@ -46,7 +46,8 @@ def generate_html_content(folders):
         
         for file in files:
             title = file.replace('.html', '')
-            link = f'./{folder_name}/{quote(file)}'
+            # 使用 quote_plus 来正确处理 Unicode 字符和空格
+            link = f'./{folder_name}/{quote(file, safe="")}'
             html_content += f'''
                 <a href="{link}" class="card">
                     <div class="card-content">
@@ -76,11 +77,20 @@ def update_index_html():
     new_content = generate_html_content(folders)
     
     # 替换模板中的内容部分
-    # 使用正则表达式找到需要替换的部分
-    pattern = r'(        <div class="update-info">.*?</div>\s*)(.*?)(\s*</div>\s*<script>)'
-    replacement = r'\1' + new_content + r'\3'
+    # 使用更简单的方法：替换注释标记之间的内容
+    start_marker = '        <!-- 这里的内容会被自动更新 -->'
+    end_marker = '    </div>'
     
-    updated_html = re.sub(pattern, replacement, template, flags=re.DOTALL)
+    start_pos = template.find(start_marker)
+    end_pos = template.find(end_marker, start_pos)
+    
+    if start_pos != -1 and end_pos != -1:
+        updated_html = template[:start_pos] + new_content + template[end_pos:]
+    else:
+        # 如果找不到标记，直接替换整个容器内容
+        pattern = r'(    <div class="container">\s*)(.*?)(\s*</div>\s*<script>)'
+        replacement = r'\1' + new_content + r'\3'
+        updated_html = re.sub(pattern, replacement, template, flags=re.DOTALL)
     
     # 写入新的index.html
     with open('index.html', 'w', encoding='utf-8') as f:
