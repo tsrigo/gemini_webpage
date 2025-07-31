@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>128. 最长连续序列 - 交互式解析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .apple-h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .apple-h2 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            letter-spacing: -0.015em;
+            line-height: 1.2;
+        }
+        .apple-h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #111; color: #eee; }
+            .card {
+                background-color: rgba(30, 30, 30, 0.7);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+            .bg-gray-100 { background-color: #222; }
+            .text-gray-500 { color: #999; }
+            .text-gray-700 { color: #ccc; }
+            .text-gray-800 { color: #eee; }
+            .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.25); }
+            input { background-color: #333; color: #eee; border-color: #555; }
+            button { filter: brightness(1.2); }
+            code { background-color: #2d2d2d; color: #f0f0f0; }
+            .code-comment { color: #888; }
+        }
+        .num-box {
+            transition: all 0.5s ease-in-out;
+            min-width: 40px;
+        }
+        .fade-in {
+            animation: fadeIn 0.8s ease-in-out forwards;
+            opacity: 0;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        .pop-in {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            transform: scale(0.5);
+            opacity: 0;
+        }
+        @keyframes popIn {
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-black text-gray-800 dark:text-gray-200">
+
+    <main class="max-w-5xl mx-auto px-4 py-12 sm:py-20">
+
+        <!-- Header Section -->
+        <header class="text-center mb-20 md:mb-32">
+            <p class="text-blue-600 dark:text-blue-400 font-semibold mb-2">LeetCode 128</p>
+            <h1 class="apple-h1 mb-4">最长连续序列</h1>
+            <p class="text-xl md:text-2xl text-gray-500 dark:text-gray-400 max-w-3xl mx-auto">
+                从无序到有序，探索 O(n) 复杂度下的优雅解法。
+            </p>
+        </header>
+
+        <!-- Interactive Visualization Section -->
+        <section class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="apple-h2 mb-2">交互式动画解析</h2>
+                <p class="text-gray-500 dark:text-gray-400">输入一个数组，观察算法的每一步。</p>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-8 items-center">
+                <input id="inputArray" type="text" class="w-full flex-grow p-3 rounded-lg border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none transition" value="100, 4, 200, 1, 3, 2">
+                <div class="flex gap-2">
+                    <button id="runBtn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300">运行</button>
+                    <button id="resetBtn" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-300">重置</button>
+                </div>
+            </div>
+
+            <!-- Visualization Area -->
+            <div class="card rounded-xl shadow-lg p-6 min-h-[400px]">
+                <!-- Step 1: Build Set -->
+                <div id="step1" class="mb-8">
+                    <h3 class="apple-h3 mb-4">第一步: 构建哈希集合 (Set)</h3>
+                    <p class="text-gray-500 dark:text-gray-400 mb-4">将所有数字存入 Set，实现 O(1) 快速查找。这就像为数字建立一个高效的“仓库”。</p>
+                    <div class="flex flex-col md:flex-row gap-8 items-start">
+                        <div class="w-full md:w-1/2">
+                            <p class="font-semibold mb-2">输入数组</p>
+                            <div id="initialArray" class="flex flex-wrap gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
+                        </div>
+                        <div class="w-full md:w-1/2">
+                            <p class="font-semibold mb-2">哈希集合</p>
+                            <div id="setContainer" class="flex flex-wrap gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg min-h-[56px]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Iterate and Find -->
+                <div id="step2">
+                    <h3 class="apple-h3 mb-4">第二步: 迭代并寻找序列起点</h3>
+                    <p class="text-gray-500 dark:text-gray-400 mb-4">遍历原数组，只从 “没有前一个数字” (num-1) 的元素开始查找，避免重复计算。</p>
+                    <div id="iterationArea" class="space-y-4">
+                        <div class="flex flex-wrap gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg min-h-[56px]" id="iterationArray"></div>
+                        <div id="statusBox" class="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-800 dark:text-blue-200 transition-all duration-300 opacity-0">
+                            <p id="statusText" class="font-mono"></p>
+                        </div>
+                        <div class="flex justify-between font-mono text-lg">
+                            <p>当前最长序列: <span id="maxLength" class="font-bold text-green-500">0</span></p>
+                            <p>当前序列长度: <span id="currentLength" class="font-bold text-orange-500">0</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Code Implementation Section -->
+        <section>
+            <div class="text-center mb-12">
+                <h2 class="apple-h2 mb-2">代码实现</h2>
+                <p class="text-gray-500 dark:text-gray-400">最终的 JavaScript 解决方案。</p>
+            </div>
+            <div class="card rounded-xl shadow-lg p-2">
+                <pre class="p-4 sm:p-6 text-sm rounded-lg overflow-x-auto bg-white dark:bg-gray-900"><code class="language-javascript">
+function longestConsecutive(nums) {
+  <span class="code-comment">// 如果数组为空，直接返回 0</span>
+  if (nums.length === 0) {
+    return 0;
+  }
+
+  <span class="code-comment">// 1. 将所有数字放入哈希集合，用于 O(1) 查找</span>
+  const numSet = new Set(nums);
+  let longestStreak = 0;
+
+  <span class="code-comment">// 2. 遍历集合中的每个数字</span>
+  for (const num of numSet) {
+    <span class="code-comment">// 3. 关键优化：只从序列的起点开始计算</span>
+    <span class="code-comment">// 如果 num-1 存在，说明 num 不是起点，跳过</span>
+    if (!numSet.has(num - 1)) {
+      let currentNum = num;
+      let currentStreak = 1;
+
+      <span class="code-comment">// 4. 从起点开始，向后查找连续的数字</span>
+      while (numSet.has(currentNum + 1)) {
+        currentNum += 1;
+        currentStreak += 1;
+      }
+
+      <span class="code-comment">// 5. 更新历史最长序列的长度</span>
+      longestStreak = Math.max(longestStreak, currentStreak);
+    }
+  }
+
+  return longestStreak;
+}
+                </code></pre>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- DOM Elements ---
+        const inputArrayEl = document.getElementById('inputArray');
+        const runBtn = document.getElementById('runBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const initialArrayContainer = document.getElementById('initialArray');
+        const setContainer = document.getElementById('setContainer');
+        const iterationArrayContainer = document.getElementById('iterationArray');
+        const statusBox = document.getElementById('statusBox');
+        const statusText = document.getElementById('statusText');
+        const maxLengthEl = document.getElementById('maxLength');
+        const currentLengthEl = document.getElementById('currentLength');
+
+        let animationTimeout;
+
+        // --- Utility Functions ---
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        const createNumBox = (num, id, extraClasses = '') => {
+            const box = document.createElement('div');
+            box.id = id;
+            box.textContent = num;
+            box.className = `num-box p-2 rounded-md text-center font-mono font-semibold bg-gray-200 dark:bg-gray-700 ${extraClasses}`;
+            return box;
+        };
+        const parseInput = (input) => {
+            return input.split(',')
+                .map(s => s.trim())
+                .filter(s => s !== '')
+                .map(Number)
+                .filter(n => !isNaN(n));
+        };
+
+        // --- Core Animation Logic ---
+        async function runAnimation() {
+            clearTimeout(animationTimeout);
+            resetUI();
+            runBtn.disabled = true;
+            resetBtn.disabled = true;
+
+            const nums = parseInput(inputArrayEl.value);
+            if (nums.length === 0) {
+                statusBox.classList.remove('opacity-0');
+                statusText.textContent = "数组为空，最长序列为 0。";
+                runBtn.disabled = false;
+                resetBtn.disabled = false;
+                return;
+            }
+
+            // --- Step 1: Build Set ---
+            nums.forEach(num => {
+                const box = createNumBox(num, `initial-${num}-${Math.random()}`);
+                initialArrayContainer.appendChild(box);
+            });
+            await sleep(500);
+
+            const numSet = new Set(nums);
+            const setElements = Array.from(numSet).sort((a, b) => a - b);
+
+            for (const num of setElements) {
+                const box = createNumBox(num, `set-${num}`);
+                setContainer.appendChild(box);
+                box.classList.add('pop-in');
+                await sleep(100);
+            }
+            await sleep(500);
+
+            // --- Step 2: Iterate ---
+            statusBox.classList.remove('opacity-0');
+            let longestStreak = 0;
+
+            for (const num of nums) {
+                const iterBoxId = `iter-${num}-${Math.random()}`;
+                const box = createNumBox(num, iterBoxId);
+                iterationArrayContainer.appendChild(box);
+            }
+            await sleep(500);
+            
+            const iterBoxes = Array.from(iterationArrayContainer.children);
+
+            for (const box of iterBoxes) {
+                const num = parseInt(box.textContent);
+                
+                // Highlight current number
+                iterBoxes.forEach(b => b.classList.remove('ring-2', 'ring-blue-500'));
+                box.classList.add('ring-2', 'ring-blue-500');
+
+                statusText.textContent = `正在检查数字: ${num}`;
+                await sleep(800);
+
+                if (!numSet.has(num - 1)) {
+                    // It's a start of a sequence
+                    statusText.textContent = `检查 ${num - 1}: 不在集合中。 ${num} 是一个序列的起点！`;
+                    box.classList.add('bg-green-300', 'dark:bg-green-700');
+                    await sleep(1200);
+
+                    let currentNum = num;
+                    let currentStreak = 1;
+                    currentLengthEl.textContent = currentStreak;
+                    
+                    const sequence = [num];
+                    document.getElementById(`set-${num}`).classList.add('bg-orange-400', 'dark:bg-orange-600');
+
+                    while (numSet.has(currentNum + 1)) {
+                        statusText.textContent = `检查 ${currentNum + 1}: 在集合中...`;
+                        document.getElementById(`set-${currentNum + 1}`).classList.add('bg-orange-400', 'dark:bg-orange-600');
+                        await sleep(800);
+                        
+                        currentNum++;
+                        currentStreak++;
+                        sequence.push(currentNum);
+                        currentLengthEl.textContent = currentStreak;
+                    }
+                    
+                    statusText.textContent = `序列 [${sequence.join(', ')}] 结束。长度为 ${currentStreak}。`;
+                    await sleep(1500);
+
+                    if (currentStreak > longestStreak) {
+                        longestStreak = currentStreak;
+                        maxLengthEl.textContent = longestStreak;
+                        statusText.textContent = `发现新的最长序列！长度: ${longestStreak}`;
+                        await sleep(1500);
+                    }
+
+                } else {
+                    // Not a start
+                    statusText.textContent = `检查 ${num - 1}: 在集合中。 ${num} 不是起点，跳过。`;
+                    box.classList.add('bg-red-300', 'dark:bg-red-700');
+                    await sleep(1200);
+                }
+                
+                // Reset colors for next iteration
+                currentLengthEl.textContent = 0;
+                setContainer.childNodes.forEach(b => b.classList.remove('bg-orange-400', 'dark:bg-orange-600'));
+                box.classList.remove('bg-green-300', 'dark:bg-green-700', 'bg-red-300', 'dark:bg-red-700');
+            }
+            
+            iterBoxes.forEach(b => b.classList.remove('ring-2', 'ring-blue-500'));
+            statusText.textContent = `遍历完成！最长连续序列的长度是 ${longestStreak}。`;
+            runBtn.disabled = false;
+            resetBtn.disabled = false;
+        }
+
+        // --- UI Reset ---
+        function resetUI() {
+            clearTimeout(animationTimeout);
+            initialArrayContainer.innerHTML = '';
+            setContainer.innerHTML = '';
+            iterationArrayContainer.innerHTML = '';
+            statusBox.classList.add('opacity-0');
+            statusText.textContent = '';
+            maxLengthEl.textContent = '0';
+            currentLengthEl.textContent = '0';
+            runBtn.disabled = false;
+            resetBtn.disabled = false;
+        }
+
+        // --- Event Listeners ---
+        runBtn.addEventListener('click', runAnimation);
+        resetBtn.addEventListener('click', () => {
+            inputArrayEl.value = "100, 4, 200, 1, 3, 2";
+            resetUI();
+        });
+        
+        // Initial run on page load
+        animationTimeout = setTimeout(runAnimation, 500);
+
+    </script>
+</body>
+</html>

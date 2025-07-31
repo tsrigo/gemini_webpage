@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>“验证的不对称性”与“验证者定律”</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', 'Inter', sans-serif;
+        }
+        .highlight {
+            background-color: #eef2ff; /* indigo-100 */
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #4338ca; /* indigo-700 */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto max-w-4xl px-4 py-12 md:py-20">
+
+        <!-- Header -->
+        <header class="mb-12 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-4">“验证的不对称性”与“验证者定律”</h1>
+            <p class="text-slate-500">原文作者：Jason Wei · 翻译及解读：Gemini</p>
+            <p class="text-slate-400 text-sm mt-2">原文发布于 2023年7月15日</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="space-y-8 text-lg leading-relaxed">
+            
+            <p class="text-xl text-slate-600">
+                <span class="highlight">验证的不对称性（Asymmetry of verification）</span>指的是这样一种思想：<strong class="font-semibold text-slate-900">对于某些任务，验证一个解是否正确，要比从头解决这个问题容易得多。</strong>随着强化学习（RL）技术日趋成熟和通用，这个概念正成为人工智能（AI）领域中最重要的思想之一。
+            </p>
+
+            <!-- Section 1: Examples -->
+            <section>
+                <h2 class="text-3xl font-bold text-slate-900 mt-12 mb-6 border-b-2 border-indigo-200 pb-2">通过实例理解“验证的不对称性”</h2>
+                <p>如果你留心观察，会发现“验证的不对称性”无处不在。一些典型的例子包括：</p>
+                <ul class="list-disc list-inside space-y-3 mt-4 pl-4 text-slate-700">
+                    <li><strong>数独和填字游戏：</strong>解决这些谜题非常耗时，因为你必须在各种约束条件下尝试许多候选答案。但是，要检查一个给定的答案是否正确，却是一件轻而易举的事。</li>
+                    <li><strong>网站开发：</strong>编写像 Instagram 这样网站的运营代码，需要一个工程师团队花费数年时间。但是，任何一个普通用户都可以快速验证这个网站是否在正常工作。</li>
+                    <li><strong>网页浏览任务：</strong>解决 <a href="https://www.google.com/search?q=BrowseComp" target="_blank" class="text-indigo-600 hover:underline">BrowseComp</a> 这类问题通常需要浏览数百个网站，但验证任何给定的答案通常要快得多，因为你可以直接搜索答案是否满足约束条件。</li>
+                </ul>
+
+                <p class="mt-6">当然，也有些任务具有<strong class="font-semibold text-slate-900">近乎对称的验证性</strong>：验证它们所需的时间与解决它们所需的时间相差无几。例如，验证某些数学问题的答案（比如计算两个900位数字的和）所需的工作量，与亲手解决这个问题几乎一样。另一个例子是某些数据处理程序；跟着别人的代码走一遍并验证其正确性，所花的时间和自己写一遍差不多。</p>
+                
+                <p class="mt-6">更有趣的是，还有一些任务，<strong class="font-semibold text-slate-900">验证所需的时间可能远远超过提出解决方案的时间</strong>。例如，对一篇文章中的所有陈述进行事实核查，可能比写这篇文章本身更耗时。这让人想起了<span class="highlight">布兰多里尼定律（Brandolini's law）</span>：</p>
+                
+                <blockquote class="mt-4 border-l-4 border-amber-400 bg-amber-50 p-4 rounded-r-lg">
+                    <p class="font-medium text-amber-800">“驳斥胡说八道所需的能量，要比产生它高出一个数量级。”</p>
+                </blockquote>
+
+                <p class="mt-6">许多科学假说也属于“验证比提出更难”的类型。例如，提出一种新颖的饮食法（“只吃野牛和西兰花”）很容易，但要验证这种饮食是否对普通人群有益，则可能需要数年时间。</p>
+            </section>
+
+            <!-- Section 2: Improving Asymmetry -->
+            <section>
+                <h2 class="text-3xl font-bold text-slate-900 mt-12 mb-6 border-b-2 border-indigo-200 pb-2">改善“验证的不对称性”</h2>
+                <p>关于“验证的不对称性”，最重要的认知之一是：<strong class="font-semibold text-slate-900">通过预先投入一些研究工作，我们实际上可以改善这种不对称性，让验证变得更容易。</strong></p>
+                <p class="mt-4">例如，对于一道数学竞赛题，如果你手头有答案，那么检查任何提交的最终答案都易如反掌。另一个绝佳的例子是某些编程问题：虽然阅读代码并检查其正确性很繁琐，但如果你有覆盖率充足的测试用例，就可以快速检查任何给定的解决方案。事实上，这正是 LeetCode 等平台所做的。</p>
+                <p class="mt-4">在某些任务中，虽然可以改善验证过程，但不足以使其变得微不足道。例如，对于“说出一个荷兰足球运动员的名字”这样的问题，手头有一份著名的荷兰足球运动员名单会有所帮助，但在许多情况下，验证仍然需要费一番功夫。</p>
+            </section>
+
+            <!-- Section 3: Verifier's Law -->
+            <section>
+                <h2 class="text-3xl font-bold text-slate-900 mt-12 mb-6 border-b-2 border-indigo-200 pb-2">验证者定律 (Verifier’s Law)</h2>
+                <p>为什么“验证的不对称性”如此重要？回顾深度学习的历史，我们看到几乎<strong class="font-semibold text-slate-900">任何可以被量化的东西，最终都可以被优化</strong>。在强化学习（RL）的语境下，验证解决方案的能力等同于创建一个RL环境的能力。因此，我们得出了：</p>
+                
+                <div class="mt-6 border-l-4 border-indigo-500 bg-indigo-50 p-6 rounded-r-lg shadow-sm">
+                    <h3 class="text-xl font-bold text-indigo-900 mb-2">验证者定律 (Verifier’s Law)</h3>
+                    <p class="font-semibold text-indigo-700">训练AI解决一个任务的难易程度，与该任务的可验证性成正比。所有可能被解决且易于验证的任务，终将被AI解决。</p>
+                </div>
+
+                <!-- 难点解析 -->
+                <div class="mt-8 bg-white p-6 rounded-lg border border-slate-200 shadow">
+                    <h4 class="text-xl font-bold text-slate-800 mb-3">难点解析：验证者定律的核心要素</h4>
+                    <p class="mb-4 text-slate-600">“验证者定律”指出，一个任务越容易验证，AI就越容易学会解决它。具体来说，训练AI解决任务的能力与该任务是否具备以下属性成正比：</p>
+                    <ol class="list-decimal list-inside space-y-3 text-slate-700">
+                        <li><strong>客观真理 (Objective truth):</strong> 对于什么是好的解决方案，大家有共识。</li>
+                        <li><strong>快速验证 (Fast to verify):</strong> 任何给定的解决方案都可以在几秒钟内被验证。</li>
+                        <li><strong>可规模化验证 (Scalable to verify):</strong> 可以同时验证许多解决方案。</li>
+                        <li><strong>低噪声 (Low noise):</strong> 验证结果与解决方案的质量尽可能紧密相关。</li>
+                        <li><strong>连续奖励 (Continuous reward):</strong> 很容易对同一问题的多个解决方案进行优劣排序。</li>
+                    </ol>
+                    <p class="mt-4 text-slate-600">这些特性之所以重要，是因为它们最大化了神经网络的学习效率。当反馈（奖励信号）来得又快又准时，AI就可以进行大量高质量的梯度更新，从而快速迭代和学习。这就像数字世界的进步远快于物理世界一样，迭代速度是关键。</p>
+                </div>
+
+                <p class="mt-6">不难相信“验证者定律”是成立的：AI领域提出的大多数基准测试都易于验证，并且迄今为止都已被（或正在被）解决。你会发现，过去十年中几乎所有流行的基准测试都符合上述标准1-4；不符合这些标准的基准测试很难流行起来。值得注意的是，尽管大多数基准测试不符合标准5（一个解通常要么完全正确，要么完全错误），但你可以通过对许多样本的二元奖励（0或1）求平均，来计算出一个连续的奖励值。</p>
+            </section>
+
+            <!-- Section 4: AlphaEvolve -->
+            <section>
+                <h2 class="text-3xl font-bold text-slate-900 mt-12 mb-6 border-b-2 border-indigo-200 pb-2">AlphaEvolve：一个绝佳范例</h2>
+                <p>过去几年里，在利用“验证的不对称性”方面，最杰出的公开范例或许就是谷歌开发的 <span class="highlight">AlphaEvolve</span>。简而言之，AlphaEvolve 可以被看作是一种非常巧妙的“猜测-检验”（guess-and-check）机制的实现，它允许对一个目标进行无情的优化，并已催生了多项数学和操作上的创新。</p>
+
+                <p class="mt-4">AlphaEvolve 优化的一个简单问题例子是：“找到能容纳11个单位六边形的最小外接六边形”。请注意，这个问题完全符合“验证者定律”的所有五个理想属性。</p>
+
+                <!-- 难点解析 -->
+                <div class="mt-8 bg-white p-6 rounded-lg border border-slate-200 shadow">
+                    <h4 class="text-xl font-bold text-slate-800 mb-3">难点解析：AlphaEvolve 与 “过拟合”</h4>
+                    <p class="text-slate-600 mb-4">AlphaEvolve 解决的问题类型，可以被看作是对单个问题进行“过拟合”（overfitting）。在传统的机器学习中，我们已经知道训练集中的标签，而重要的测试是衡量模型对<strong class="font-semibold">未见过</strong>的问题的泛化能力。</p>
+                    <p class="text-slate-600">然而，在科学创新的领域，我们处于一个完全不同的范式中。在这里，我们只关心解决<strong class="font-semibold">一个特定问题</strong>（训练集=测试集！），因为这是一个尚未解决且可能极具价值的问题。这种“为解决而生”的专注，正是 AlphaEvolve 的强大之处。</p>
+                </div>
+                
+                <p class="mt-6">事实上，我相信任何满足这五个属性的可解问题，都将在未来几年内被解决。</p>
+            </section>
+
+            <!-- Section 5: Implications -->
+            <section>
+                <h2 class="text-3xl font-bold text-slate-900 mt-12 mb-6 border-b-2 border-indigo-200 pb-2">启示</h2>
+                <p>一旦你了解了“验证的不对称性”，你就会发现它无处不在。一个<strong class="font-semibold text-slate-900">任何我们能够量化的事物都将被解决</strong>的世界，想来就令人兴奋。我们很可能会看到一条参差不齐的智能前沿——AI在可验证的任务上会聪明得多，因为解决这些任务要容易得多。这是一个多么激动人心的未来！</p>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-16 pt-8 border-t border-slate-200 text-center text-slate-500">
+            <p>感谢阅读。本文基于 Jason Wei 的博文进行翻译和解读。</p>
+        </footer>
+
+    </div>
+
+</body>
+</html>
