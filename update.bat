@@ -1,0 +1,6 @@
+@echo off
+echo 正在更新主页内容...
+python update_index.py
+echo.
+echo 更新完成！按任意键退出...
+pause >nul 

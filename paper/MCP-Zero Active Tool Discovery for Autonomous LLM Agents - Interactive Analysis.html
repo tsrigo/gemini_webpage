@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP-Zero: Active Tool Discovery for Autonomous LLM Agents - 深度解析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #f9fafb; /* Lighter gray background */
+            color: #1f2937;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .apple-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+        }
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #111827;
+            margin-bottom: 1rem;
+        }
+        .section-subtitle {
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: #4b5563;
+            max-width: 48rem;
+            margin: 0 auto 3rem auto;
+        }
+        .content-card {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.1);
+        }
+        .h3-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        p, li > p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #374151;
+        }
+        li {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #374151;
+        }
+        code {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            border-radius: 6px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+        }
+        .figure-caption {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 1rem;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 0.95rem;
+        }
+        th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+        .tag-green { background-color: #d1fae5; color: #065f46; }
+        .tag-red { background-color: #fee2e2; color: #991b1b; }
+        .tag-blue { background-color: #dbeafe; color: #1e40af; }
+
+        /* Animation */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .fade-in-up.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Header -->
+    <header class="apple-header sticky top-0 z-50 w-full border-b border-gray-200">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-gray-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.25278C12 6.25278 6.75 3 4.5 3C4.5 3 3 6.75 3 9C3 12.75 6.75 21 12 21C17.25 21 21 12.75 21 9C21 6.75 19.5 3 19.5 3C17.25 3 12 6.25278 12 6.25278Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15L12 21" />
+                        </svg>
+                    </div>
+                    <div class="hidden md:block">
+                        <div class="ml-10 flex items-baseline space-x-4">
+                            <a href="#motivation" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">研究动机</a>
+                            <a href="#modeling" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">数学建模</a>
+                            <a href="#methods" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">实验方法</a>
+                            <a href="#results" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">实验结果</a>
+                            <a href="#discussion" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">讨论</a>
+                            <a href="#review" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Reviewer 点评</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Hero Section -->
+        <section class="text-center my-16 fade-in-up">
+            <h1 class="text-4xl md:text-6xl font-bold tracking-tight text-gray-900">
+                MCP-Zero
+            </h1>
+            <h2 class="mt-4 text-2xl md:text-3xl font-medium text-gray-600">
+                Active Tool Discovery for Autonomous LLM Agents
+            </h2>
+            <p class="mt-6 max-w-3xl mx-auto text-lg text-gray-500">
+                一篇旨在将 LLM 从被动的工具选择者，转变为能主动寻求并构建能力、真正自主的智能体的开创性工作。
+            </p>
+        </section>
+
+        <!-- Sections -->
+        <div id="motivation" class="pt-16">
+            <section class="text-center fade-in-up">
+                <h2 class="section-title">研究动机</h2>
+                <p class="section-subtitle">
+                    真正的智能在于主动探索，而非被动选择。当前的 LLM Agent 架构从根本上限制了其自主性，是时候做出改变了。
+                </p>
+            </section>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">问题：被“喂饱”的智能体，而非真正的智能</h3>
+                <p>当前主流的 LLM Agent 范式存在两个核心问题：</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>上下文臃肿 (Massive Context Overhead):</strong> 为了让模型能使用工具，开发者通常会将成百上千个工具的完整定义（JSON Schema）全部塞进系统提示词（System Prompt）中。这不仅极大地消耗了宝贵的上下文窗口，也让模型不堪重负。例如，论文提到，仅 GitHub 的 MCP 服务器就需要超过 4600 个 token 来描述其 26 个工具，而一个完整的工具生态系统可能超过 24.8 万个 token。</li>
+                    <li><strong>决策自主性受限 (Constrained Decision Autonomy):</strong> 模型被动地从一个预设好的、庞大的工具列表中进行选择，而不是根据任务的动态需求主动地、有目的地去发现和获取能力。这从根本上违背了自主智能体（Autonomous Agent）的核心原则——根据对自身能力的评估，主动塑造其环境。</li>
+                </ul>
+                <div class="mt-8 p-6 bg-gray-50 rounded-xl">
+                    <img src="https://placehold.co/1200x400/e2e8f0/4a5568?text=Figure+1:+Tool+Selection+Paradigms+Comparison" alt="论文图1：工具选择范式对比" class="rounded-lg shadow-md mx-auto">
+                    <p class="figure-caption"><strong>论文图 1</strong>: (a) <strong>传统方法</strong>：将所有工具注入 Prompt，导致上下文过长，效率低下。(b) <strong>检索增强方法</strong>：根据用户查询进行一次性检索，在多轮对话或复杂任务中可能不准确或不充分。(c) <strong>MCP-Zero (本文方法)</strong>：LLM 主动分析任务，按需迭代式地请求最相关的工具，以最小的上下文开销和高准确率动态构建工具链。</p>
+                </div>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">Significance: 迈向真正自主的智能体</h3>
+                <p>
+                    这篇论文的 significance 在于它提出了一个全新的范式——<strong>主动工具发现 (Active Tool Discovery)</strong>。其核心思想是：<strong>将工具选择的决定权还给 LLM 自己</strong>。
+                </p>
+                <p class="mt-4">
+                    与其让模型成为一个在庞大数据库中进行查询的系统，不如相信并利用其强大的推理、规划和自我反思能力。让模型在遇到能力缺口时，能主动、清晰地表达出“我需要一个什么样的工具来完成这个子任务”。
+                </p>
+                <p class="mt-4">
+                    这种转变，使得 LLM Agent 从一个被动的<strong>工具使用者 (Tool User)</strong>，进化为一个主动的<strong>能力构建者 (Capability Architect)</strong>。这不仅解决了上下文臃肿的工程问题，更是在通往通用人工智能（AGI）的道路上，回归了智能体自主性的第一性原理。
+                </p>
+            </div>
+        </div>
+
+        <div id="modeling" class="pt-16">
+            <section class="text-center fade-in-up">
+                <h2 class="section-title">数学表示及建模</h2>
+                <p class="section-subtitle">
+                    通过严谨的数学形式化，我们可以清晰地看到主动发现范式在可扩展性、语义对齐和信息获取效率上的理论优势。
+                </p>
+            </section>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">核心建模：从被动选择到主动请求</h3>
+                <p>
+                    我们首先对问题进行形式化定义。令 $T = \{t_1, t_2, ..., t_n\}$ 为完整的工具集， $q$ 为用户查询, $s_t$ 为当前对话状态, $t^*$ 为最优工具。
+                </p>
+                <p class="mt-4">
+                    <strong>传统被动方法 (Passive Approach)</strong> 需要在整个工具集上进行一次性评估，其概率模型可以表示为：
+                </p>
+                <div class="my-4 text-center">
+                    $$ P_{\text{passive}}(t^*|q, T) = \frac{P(q|t^*, T)P(t^*|T)}{\sum_{t_i \in T} P(q|t_i, T)P(t_i|T)} $$
+                </div>
+                <p>
+                    这个模型的计算复杂度为 $O(n)$，并且随着 $n$ 的增大，注意力会被稀释，效果下降。
+                </p>
+                <p class="mt-4">
+                    <strong>MCP-Zero 主动方法 (Active Approach)</strong> 则是一个两阶段过程。首先，Agent 根据当前状态 $s_t$ 生成一个结构化的工具请求 $r$；然后，系统根据这个请求 $r$ 来检索工具。其概率模型为：
+                </p>
+                <div class="my-4 text-center">
+                    $$ P_{\text{active}}(t^*|s_t) = \sum_{r} P(t^*|r)P(r|s_t) $$
+                </div>
+                <p>
+                    其中 $P(r|s_t)$ 代表了 Agent 在当前理解下，清晰表达其需求的能力。
+                </p>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">理论优势分析</h3>
+                <ul class="list-disc list-inside mt-4 space-y-4">
+                    <li>
+                        <p><strong>主动信息获取 (Active Information Acquisition):</strong> 工具请求的生成过程可以被建模为一个主动学习过程。Agent 通过生成请求 $r^*$ 来最大化关于最优工具 $T^*$ 的信息增益（互信息）：</p>
+                        <div class="my-2 text-center">
+                        $$ r^* = \arg\max_r I(T^*; r|s_t) = \arg\max_r [H(T^*|s_t) - H(T^*|r,s_t)] $$
+                        </div>
+                        <p>这从理论上说明了 Agent 的行为是在主动地减少对所需工具的不确定性。</p>
+                    </li>
+                    <li>
+                        <strong>可扩展性分析 (Scalability Analysis):</strong>
+                        <ul class="list-decimal list-inside ml-6 mt-2 space-y-2">
+                            <li><strong>搜索空间复杂度:</strong> 被动方法是 $O(n)$。主动方法通过“服务器-工具”的层级路由，先在 $m$ 个服务器中过滤 ($m \ll n$)，再在选中的服务器内匹配，复杂度降至 $O(m + k)$，其中 $k$ 是每个服务器的平均工具数。</li>
+                            <li><strong>注意力分配:</strong> 被动方法中，每个工具的注意力约为 $\frac{1}{n}$，并受噪声 $\eta(n) \propto \log(n)$ 影响。主动方法将注意力集中在少数相关工具上，保持了 $\frac{1}{k}$ 的有效性。</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <p><strong>语义对齐优势 (Semantic Alignment Advantage):</strong> Agent 生成的请求 $r$ 与工具文档 $t$ 在语义上比原始用户查询 $q$ 更加一致。这可以用嵌入向量的余弦相似度来表示：</p>
+                        <div class="my-2 text-center">
+                        $$ \text{cos}(\mathbf{e}_r, \mathbf{e}_t) > \text{cos}(\mathbf{e}_q, \mathbf{e}_t) $$
+                        </div>
+                        <p>因为 Agent 和工具文档都工作在同一个“技术规约”的语义空间中。</p>
+                    </li>
+                    <li>
+                        <p><strong>迭代式信息增益 (Iterative Information Gain):</strong> 主动发现允许通过 $k$ 轮迭代累积信息，其总增益可以表示为：</p>
+                        <div class="my-2 text-center">
+                        $$ I_{\text{total}} = \sum_{i=1}^k I(T^*; r_i|s_{i-1}) - \lambda \cdot \text{Cost}(r_i) $$
+                        </div>
+                        <p>其中 $\lambda$ 是每次请求的上下文开销。MCP-Zero 正是在优化这个信息获取效率与成本之间的权衡。</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="methods" class="pt-16">
+            <section class="text-center fade-in-up">
+                <h2 class="section-title">实验方法与实验设计</h2>
+                <p class="section-subtitle">
+                    为了验证框架的有效性，论文设计了严谨且可复现的实验，并构建了首个面向 MCP 领域的检索数据集。
+                </p>
+            </section>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">数据集构建：MCP-tools</h3>
+                <p>为了支持主动工具发现的研究，论文构建了 <strong>MCP-tools</strong> 数据集，这是 MCP 领域第一个以检索为导向的数据集。</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>数据来源:</strong> 从官方 Model Context Protocol 仓库收集了 396 个服务器的信息。</li>
+                    <li><strong>质量筛选:</strong> 经过严格筛选（如必须有 MCP 兼容的定义、有详细文档等），最终保留了 308 个高质量服务器，共包含 2,797 个工具。</li>
+                    <li><strong>数据结构:</strong>
+                        <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                            <pre><code class="language-json" style="white-space: pre-wrap;">{
+  "server_name": "服务器名称",
+  "server_description": "服务器原始描述",
+  "server_summary": "由LLM生成的增强版摘要",
+  "tools": [
+    {
+      "name": "工具名称",
+      "description": "工具描述",
+      "parameter": { "参数1": "(类型) 描述1", ... }
+    }
+  ]
+}</code></pre>
+                        </div>
+                    </li>
+                     <li><strong>核心创新 (server_summary):</strong> 论文利用 Qwen2.5-72B-Instruct 模型为每个服务器生成了增强版的摘要（`server_summary`），该摘要提炼了服务器的核心能力和使用模式，排除了安装说明等无关信息。这使得无论是正式的 API 描述还是自然语言的能力描述，都能有效匹配，极大地提升了检索精度。</li>
+                </ul>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">实验一：Needle-in-a-Haystack (大海捞针测试)</h3>
+                <p>该实验用于评估 MCP-Zero 在极端规模和上下文条件下，从海量工具集中精确检索目标工具的能力。</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>设置:</strong> 将 1 到 2,797 个工具注入到环境中，模拟一个庞大的“草堆”。然后从不同位置随机选取一个工具的描述作为“针”（即查询），要求模型找出这个目标工具。</li>
+                    <li><strong>对比方法:</strong>
+                        <ol class="list-decimal list-inside ml-6 mt-2">
+                            <li><strong>Baseline (标准方法):</strong> 将所有工具的 schema 注入上下文，使用标准的 function-calling。</li>
+                            <li><strong>MCP-Zero (本文方法):</strong> 使用主动请求和层级路由检索。</li>
+                            <li><strong>MCP-Zero + ICL:</strong> 在 MCP-Zero 的基础上，增加一个上下文学习（In-Context Learning）样本，引导模型生成更规范的请求描述。</li>
+                        </ol>
+                    </li>
+                    <li><strong>评估模型:</strong> Claude-3.5-Sonnet, GPT-4.1, Gemini-2.5-Flash。</li>
+                </ul>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">实验二：APIBank 评估</h3>
+                <p>该实验用于验证 MCP-Zero 在真实的、多轮对话的工具检索场景下的有效性。</p>
+                 <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>数据集:</strong> 使用了业界公认的 APIBank 数据集，其中包含了 48 个独立的 API 工具以及多轮对话数据。由于 APIBank 没有服务器层级，实验直接进行工具层面的检索。</li>
+                    <li><strong>实验维度:</strong>
+                        <ol class="list-decimal list-inside ml-6 mt-2">
+                            <li><strong>对话上下文:</strong> 单轮对话 vs. 多轮对话。</li>
+                            <li><strong>工具集范围:</strong> 领域工具集 (Domain Collection，只使用与当前任务相关的子集) vs. 完整工具集 (Full Collection，从全部 48 个工具中检索)。</li>
+                        </ol>
+                    </li>
+                    <li><strong>对比方法:</strong>
+                        <ol class="list-decimal list-inside ml-6 mt-2">
+                            <li><strong>Q.Retrieval (查询检索):</strong> 直接用用户原始查询去检索工具，作为检索增强方法的基线。</li>
+                            <li><strong>Standard (标准方法):</strong> 将工具集 schema 注入上下文。</li>
+                            <li><strong>MCP-Zero (本文方法):</strong> 主动请求和检索。</li>
+                        </ol>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="results" class="pt-16">
+            <section class="text-center fade-in-up">
+                <h2 class="section-title">实验结果及核心结论</h2>
+                <p class="section-subtitle">
+                    数据胜于雄辩。实验结果清晰地展示了主动工具发现在效率、可扩展性和鲁棒性方面的压倒性优势。
+                </p>
+            </section>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">大海捞针测试：规模越大，优势越明显</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <img src="https://placehold.co/800x600/e2e8f0/4a5568?text=Figure+2:+Needle-in-a-Haystack+Results" alt="论文图2：大海捞针测试结果" class="rounded-lg shadow-md">
+                        <p class="figure-caption"><strong>论文图 2</strong>: “大海捞针”测试结果。红色代表失败，蓝色代表成功。标准方法在工具数量增多时失败率急剧上升，而 MCP-Zero 即使在近 3000 个工具的草堆中也能保持极高的成功率。</p>
+                    </div>
+                    <div>
+                        <img src="https://placehold.co/800x600/e2e8f0/4a5568?text=Figure+3:+Token+Efficiency" alt="论文图3：Token效率对比" class="rounded-lg shadow-md">
+                        <p class="figure-caption"><strong>论文图 3</strong>: Token 效率对比。标准方法的 Token 成本随工具数量指数级增长，而 MCP-Zero 的成本几乎保持为一条水平线，实现了“按需付费”。</p>
+                    </div>
+                </div>
+                <p class="mt-6">从图2和图3可以得出结论：</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>高精度检索:</strong> 即使工具库规模接近 3000，MCP-Zero 依然能准确地找到目标工具，而传统方法在工具数量超过几百个时性能就已严重下降。</li>
+                    <li><strong>极致的 Token 效率:</strong> MCP-Zero 的 Token 消耗几乎与工具库大小无关，始终保持在极低的水平，而传统方法的成本则呈指数级增长。这证明了其在解决上下文窗口限制方面的巨大潜力。</li>
+                </ul>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">APIBank 评估：真实场景下的鲁棒性</h3>
+                <p>在更贴近真实应用的多轮对话场景中，MCP-Zero 同样表现出色。</p>
+                 <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>工具集</th>
+                                <th>方法</th>
+                                <th>Claude-3.5</th>
+                                <th>GPT-4.1</th>
+                                <th>Gemini-2.5</th>
+                                <th>平均 Tokens $\downarrow$</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" class="font-bold bg-gray-100"><em>单轮对话</em></td></tr>
+                            <tr>
+                                <td rowspan="3">领域</td>
+                                <td>Q.Retrieval</td>
+                                <td colspan="3" class="text-center bg-gray-200">71.63</td>
+                                <td class="bg-gray-200">--</td>
+                            </tr>
+                            <tr>
+                                <td>Standard</td>
+                                <td><strong>97.60</strong></td>
+                                <td><strong>98.08</strong></td>
+                                <td>92.79</td>
+                                <td>312.4</td>
+                            </tr>
+                            <tr>
+                                <td>MCP-Zero</td>
+                                <td>96.15</td>
+                                <td>96.62</td>
+                                <td><strong>97.12</strong></td>
+                                <td><strong>111.0</strong> <span class="tag tag-green">-64.47%</span></td>
+                            </tr>
+                            <tr><td colspan="6" class="border-t-2 border-gray-300"></td></tr>
+                            <tr>
+                                <td rowspan="3">完整</td>
+                                <td>Q.Retrieval</td>
+                                <td colspan="3" class="text-center bg-gray-200">71.63</td>
+                                <td class="bg-gray-200">--</td>
+                            </tr>
+                            <tr>
+                                <td>Standard</td>
+                                <td>69.23</td>
+                                <td>94.71</td>
+                                <td>94.23</td>
+                                <td>6308.2</td>
+                            </tr>
+                            <tr>
+                                <td>MCP-Zero</td>
+                                <td><strong>95.19</strong></td>
+                                <td><strong>95.19</strong></td>
+                                <td><strong>96.63</strong></td>
+                                <td><strong>111.0</strong> <span class="tag tag-green">-98.24%</span></td>
+                            </tr>
+                             <tr><td colspan="6" class="font-bold bg-gray-100 border-t-4 border-gray-300"><em>多轮对话</em></td></tr>
+                             <tr>
+                                <td rowspan="3">领域</td>
+                                <td>Q.Retrieval</td>
+                                <td colspan="3" class="text-center bg-gray-200">65.05</td>
+                                <td class="bg-gray-200">--</td>
+                            </tr>
+                            <tr>
+                                <td>Standard</td>
+                                <td><strong>100.00</strong></td>
+                                <td><strong>99.46</strong></td>
+                                <td>91.40</td>
+                                <td>406.4</td>
+                            </tr>
+                            <tr>
+                                <td>MCP-Zero</td>
+                                <td>91.40</td>
+                                <td>93.01</td>
+                                <td><strong>93.01</strong></td>
+                                <td><strong>159.0</strong> <span class="tag tag-green">-60.84%</span></td>
+                            </tr>
+                            <tr><td colspan="6" class="border-t-2 border-gray-300"></td></tr>
+                            <tr>
+                                <td rowspan="3">完整</td>
+                                <td>Q.Retrieval</td>
+                                <td colspan="3" class="text-center bg-gray-200">65.05</td>
+                                <td class="bg-gray-200">--</td>
+                            </tr>
+                            <tr>
+                                <td>Standard</td>
+                                <td>60.22</td>
+                                <td><strong>93.01</strong></td>
+                                <td>92.47</td>
+                                <td>6402.2</td>
+                            </tr>
+                            <tr>
+                                <td>MCP-Zero</td>
+                                <td><strong>90.32</strong></td>
+                                <td>92.47</td>
+                                <td><strong>94.62</strong></td>
+                                <td><strong>159.0</strong> <span class="tag tag-green">-97.52%</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="figure-caption"><strong>论文表 1</strong>: APIBank 评估结果。展示了不同方法在单/多轮对话、领域/完整工具集下的准确率（%）和平均 Token 消耗。</p>
+                <h4 class="text-xl font-semibold mt-8 mb-4">核心结论 Insights:</h4>
+                <ul class="list-disc list-inside mt-4 space-y-3">
+                    <li><strong class="text-green-700">极致的上下文效率:</strong> 在所有设置下，MCP-Zero 都将 Prompt 长度减少了 <strong>60-98%</strong>。例如，在完整的单轮对话中，Token 消耗从 6308 降至 111，完美诠释了“只为需要的工具付费”的理念。</li>
+                    <li><strong class="text-blue-700">强大的可扩展性:</strong> 当工具集从精心挑选的“领域”子集扩展到“完整”工具池（API 数量增加40倍）时，标准方法在 Claude-3.5 上的准确率从 97.60% 骤降至 69.23%。相比之下，MCP-Zero 仍能保持 95.19% 的高准确率，表现出对注意力稀释效应的强大抵抗力。</li>
+                    <li><strong class="text-purple-700">多轮对话的一致性:</strong> MCP-Zero 在多轮对话中依然保持高准确率（与单轮相比下降不超过3%），而标准方法一旦上下文中累积了之前的调用历史和更大的工具集，性能就会急剧下降。</li>
+                    <li><strong class="text-yellow-700">主动请求的必要性:</strong> 仅依赖用户原始查询进行检索的基线方法（Q.Retrieval）准确率停滞在 65-72% 左右，这证实了让模型自己“撰写”语义对齐的请求是至关重要的。</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div id="discussion" class="pt-16">
+            <section class="text-center fade-in-up">
+                <h2 class="section-title">讨论与自由发挥</h2>
+                <p class="section-subtitle">
+                    一篇好的工作不仅要提出新颖的思路，还要能启发思考，并为社区提供可行的实践路径。
+                </p>
+            </section>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">Cookbook: 如何将 MCP-Zero 集成到你的 Agent 中</h3>
+                <p>论文在讨论部分非常贴心地提供了一个“食谱”，指导开发者如何将 MCP-Zero 的思想集成到自己的 Agent 中，核心分为三步：</p>
+                <ol class="list-decimal list-inside mt-4 space-y-4">
+                    <li><strong>Prompt LLM 去“请求”工具:</strong> 在系统提示词中明确授权模型，当它认为自身知识无法解决问题时，可以主动发出一个 `<tool_assistant>` 请求块。</li>
+                    <li><strong>维护一个轻量级的工具索引:</strong>
+                        <ul class="list-disc list-inside ml-6 mt-2 space-y-2">
+                            <li>为你的工具（无论是公开的 MCP-tools 还是内部 API）提取名称和描述。</li>
+                            <li>（可选但推荐）用一个强大的 LLM 生成增强版的摘要，强调其能力和用法。</li>
+                            <li>将所有文本存入向量数据库，并预先计算好嵌入（如 `text-embedding-3-large`）。</li>
+                        </ul>
+                    </li>
+                    <li><strong>连接模型输出与检索系统:</strong> 当 Agent 发出请求时，用请求中的 `server` 和 `tool` 字段去向量数据库中进行层级检索，并将最匹配的工具 schema 返回给 LLM。</li>
+                </ol>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">与 Alita 系统的协同作用：既能用工具，也能造工具</h3>
+                <p>论文还讨论了与同期的另一项重要工作 <strong>Alita</strong> 的关系。Alita 提出了一个能“创造”自己工具链的 Agent：它能上网搜索代码、克隆 GitHub 仓库、构建环境并执行程序来完成任务。</p>
+                <p class="mt-4">这两项工作是互补的：</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>MCP-Zero:</strong> 高效地 <strong>发现和调用</strong> 现有工具。</li>
+                    <li><strong>Alita:</strong> 自动地 <strong>构建</strong> 缺失的工具。</li>
+                </ul>
+                <p class="mt-4">
+                    将两者结合，可以形成一个强大的正向循环：Agent 首先通过 MCP-Zero 的主动发现机制在所有可用资源中寻找工具；如果找不到合适的，就切换到 Alita 的工作流去即时合成一个新工具；最后，将这个新工具注册到社区，供其他 Agent 发现和使用。这为构建自我进化、成本可控的 Agent 系统描绘了一个激动人心的蓝图。
+                </p>
+            </div>
+        </div>
+
+        <div id="review" class="pt-16">
+            <section class="text-center fade-in-up">
+                <h2 class="section-title">Reviewer 点评</h2>
+                <p class="section-subtitle">
+                    作为一名 AI 研究员，我将从审稿人的视角，对这项工作进行一个犀利的、全面的评价。
+                </p>
+            </section>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">优势 (Strengths)</h3>
+                <ul class="list-disc list-inside mt-4 space-y-3">
+                    <li><strong class="text-green-700">范式创新 (Paradigm Shift):</strong> 本文最核心的贡献是提出了“主动工具发现”这一全新范式。它不仅仅是一个技术优化，更是对 LLM Agent 自主性本质的一次深刻回归。将决策权从外部检索系统交还给 LLM 本身，立意高远，抓住了当前 Agent 研究的核心痛点。</li>
+                    <li><strong class="text-blue-700">坚实的实验验证 (Solid Empirical Validation):</strong> 论文的实验设计非常严谨和全面。“大海捞针”测试直观地展示了其在极端规模下的优越性，而 APIBank 评估则证明了其在真实多轮对话场景下的鲁棒性。高达 98% 的 Token 节省和在规模扩大时稳定的准确率，使得其优势无可辩驳。</li>
+                    <li><strong class="text-purple-700">宝贵的数据集贡献 (Valuable Dataset Contribution):</strong> 构建并开源的 MCP-tools 数据集是社区的一大福音。它不仅支撑了本文的研究，也为后续相关工作提供了一个高质量的基准测试平台，将推动整个领域的进步。</li>
+                    <li><strong class="text-yellow-700">实用性与可操作性强 (High Practicality):</strong> 论文提供的“Cookbook”部分极大地降低了该方法的应用门槛，展示了作者不仅关心理论创新，也注重社区的实际应用，这在学术论文中尤为可贵。</li>
+                </ul>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">不足与可改进方向 (Weaknesses & Future Directions)</h3>
+                <ul class="list-disc list-inside mt-4 space-y-3">
+                    <li><strong>对模型自身能力的依赖:</strong> 该框架的成功在很大程度上依赖于 LLM 自身强大的理解、推理和规划能力，以便能生成高质量、语义对齐的工具请求。对于能力较弱的模型，其效果可能会打折扣。未来的研究可以探索如何通过更精巧的 Prompt Engineering 或微调来提升弱模型在这方面的能力。</li>
+                    <li><strong>检索算法的进一步探索:</strong> 目前的层级向量检索虽然有效，但仍有提升空间。未来可以探索更先进的匹配算法，例如，不仅仅匹配文本描述，还可以将工具的参数结构、使用示例代码等信息融入到检索过程中，实现多模态的语义匹配。</li>
+                    <li><strong>冷启动与模糊查询问题:</strong> 当模型对一个领域完全不熟悉时，它可能难以生成精确的 `server` 和 `tool` 请求。如何处理这种模糊查询或冷启动问题，例如通过一个多轮澄清对话来逐步聚焦需求，是一个值得探索的方向。</li>
+                    <li><strong>动态工具更新与缓存机制:</strong> 现实世界中，API 会更新甚至废弃。框架目前尚未讨论如何处理工具集的动态变化。未来可以引入工具版本管理和缓存机制，让 Agent 能够感知并适应工具的变化。</li>
+                </ul>
+            </div>
+            <div class="content-card fade-in-up">
+                <h3 class="h3-title">总体评价 (Overall Assessment)</h3>
+                <p>
+                    <strong>这是一篇顶级的、具有开创性意义的工作，强烈推荐被接收 (Strong Accept)。</strong>
+                </p>
+                <p class="mt-4">
+                    MCP-Zero 不仅巧妙地解决了 LLM Agent 在工具调用中面临的上下文过载和效率低下的核心工程难题，更重要的是，它在哲学层面上推动了我们对“自主智能”的理解。通过将“发现”的主动权赋予模型，它为构建更具扩展性、鲁棒性和真正自主性的下一代 AI Agent 系统铺平了道路。这项工作的影响力将超越其技术本身，启发社区重新思考人与模型、模型与外部世界之间的交互方式。
+                </p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 text-center text-gray-400 text-sm">
+            <p>&copy; 2025. This interactive analysis was generated by Gemini based on the paper "MCP-Zero: Active Tool Discovery for Autonomous LLM Agents".</p>
+            <p class="mt-2">Paper by Xiang Fei, Xiawu Zheng, and Hao Feng.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // GSAP Scroll-triggered animations
+            gsap.registerPlugin(ScrollTrigger);
+            const animatedElements = document.querySelectorAll('.fade-in-up');
+            animatedElements.forEach(el => {
+                gsap.to(el, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.6,
+                    ease: 'power2.out',
+                    scrollTrigger: {
+                        trigger: el,
+                        start: 'top 85%',
+                        toggleActions: 'play none none none',
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

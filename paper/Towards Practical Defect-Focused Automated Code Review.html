@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深度解析: Towards Practical Defect-Focused Automated Code Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
+                    },
+                    colors: {
+                        'apple-gray': {
+                            100: '#f5f5f7',
+                            200: '#e8e8ed',
+                            300: '#d2d2d7',
+                            400: '#a1a1a6',
+                            500: '#86868b',
+                            600: '#6e6e73',
+                            700: '#424245',
+                            800: '#333333',
+                            900: '#1d1d1f',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        window.MathJax = {
+          tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']]
+          },
+          svg: {
+            fontCache: 'global'
+          }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .section-title {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+        .sub-title {
+            font-size: 2rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+        .content-text {
+            font-size: 1.125rem;
+            line-height: 1.8;
+            color: #424245;
+        }
+        .highlight {
+            color: #0071e3;
+        }
+        .latex-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .latex-table th, .latex-table td {
+            border: 1px solid #d2d2d7;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        .latex-table th {
+            background-color: #f5f5f7;
+            font-weight: 600;
+        }
+        .animated-item {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animated-item.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-white text-apple-gray-900">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md fixed top-0 left-0 right-0 z-50 border-b border-apple-gray-200">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl">论文解析</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#motivation" class="text-apple-gray-600 hover:text-apple-gray-900 px-3 py-2 rounded-md text-sm font-medium">研究动机</a>
+                        <a href="#method" class="text-apple-gray-600 hover:text-apple-gray-900 px-3 py-2 rounded-md text-sm font-medium">核心方法</a>
+                        <a href="#experiments" class="text-apple-gray-600 hover:text-apple-gray-900 px-3 py-2 rounded-md text-sm font-medium">实验结果</a>
+                        <a href="#review" class="text-apple-gray-600 hover:text-apple-gray-900 px-3 py-2 rounded-md text-sm font-medium">我的评论</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="pt-16">
+        <!-- Hero Section -->
+        <section class="text-center py-20 md:py-32 bg-apple-gray-100 border-b border-apple-gray-200">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <p class="text-lg font-semibold text-blue-600 animated-item">Towards Practical Defect-Focused Automated Code Review</p>
+                <h1 class="mt-4 text-4xl md:text-6xl font-bold tracking-tight text-apple-gray-900 animated-item" style="transition-delay: 100ms;">
+                    重塑代码审查：<br class="hidden md:block">一个更懂缺陷、更贴近实战的AI框架
+                </h1>
+                <p class="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-apple-gray-600 animated-item" style="transition-delay: 200ms;">
+                    本文跳出传统代码到文本生成的局限，直面工业界代码审查的核心痛点——缺陷检测。通过创新的代码切片、多角色LLM协作和精细的过滤机制，构建了一个端到端的自动化代码审查流程，并在真实世界的故障数据上取得了卓越成效。
+                </p>
+            </div>
+        </section>
+
+        <!-- Motivation Section -->
+        <section id="motivation" class="py-20 md:py-28">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title animated-item">问题的核心：为何需要更好的自动化代码审查？</h2>
+                    <p class="mt-6 max-w-3xl mx-auto content-text animated-item" style="transition-delay: 100ms;">
+                        代码审查 (Code Review) 是保障软件质量的基石，但人工审查耗时耗力。现有自动化方法大多将其简化为代码片段到文本的翻译任务，忽略了开发者最真实的需求：<strong class="font-semibold text-apple-gray-800">发现并修复那些可能导致严重后果的潜在缺陷</strong>。
+                    </p>
+                </div>
+
+                <div class="mt-16 grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
+                    <div class="animated-item" style="transition-delay: 200ms;">
+                        <h3 class="sub-title">现实的代价</h3>
+                        <p class="mt-4 content-text">
+                            论文指出，在一家拥有近4亿日活用户的公司中，大量线上事故源于代码审查不足。数据显示：
+                        </p>
+                        <ul class="mt-4 space-y-3 list-disc list-inside content-text">
+                            <li><span class="font-semibold text-red-500">30%</span> 的严重P1+事故（资产损失超35万美元）</li>
+                            <li><span class="font-semibold text-orange-500">24.04%</span> 的P4+事故</li>
+                        </ul>
+                        <p class="mt-2 content-text">
+                            均由低级错误导致。这凸显了构建一个真正能<strong class="font-semibold text-apple-gray-800">聚焦于缺陷检测 (Defect-Focused)</strong> 的自动化工具的紧迫性。
+                        </p>
+                    </div>
+                    <div class="p-8 bg-apple-gray-100 rounded-2xl animated-item" style="transition-delay: 300ms;">
+                        <img src="https://placehold.co/600x400/e8e8ed/1d1d1f?text=Figure+1:+自动化代码审查流程图" alt="论文中的自动化代码审查流程图" class="rounded-lg shadow-md">
+                        <p class="text-center mt-4 text-sm text-apple-gray-600">论文图1：集成到公司DevOps平台的自动化代码审查流程示意图。</p>
+                    </div>
+                </div>
+
+                <div class="mt-20">
+                    <h3 class="sub-title text-center animated-item">通往实战之路的四大挑战</h3>
+                    <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <!-- Challenge 1 -->
+                        <div class="bg-white p-6 rounded-xl border border-apple-gray-200 animated-item" style="transition-delay: 100ms;">
+                            <h4 class="font-bold text-lg">1. 捕获恰当的代码上下文</h4>
+                            <p class="mt-2 text-apple-gray-600 text-base">审查不仅限于修改的代码本身 (diff hunk)，还需要关联的变量声明、函数调用等。但输入过长又会降低LLM性能。如何在“信息不足”与“信息过载”间找到平衡点？</p>
+                        </div>
+                        <!-- Challenge 2 -->
+                        <div class="bg-white p-6 rounded-xl border border-apple-gray-200 animated-item" style="transition-delay: 200ms;">
+                            <h4 class="font-bold text-lg">2. 提升关键缺陷召回率 (KBI)</h4>
+                            <p class="mt-2 text-apple-gray-600 text-base">自动化审查的核心是找出真正的Bug。传统的文本相似度指标 (如BLEU) 无法衡量这一点。需要更关注结果的评价指标，即 Key-Bug Inclusion (KBI)。</p>
+                        </div>
+                        <!-- Challenge 3 -->
+                        <div class="bg-white p-6 rounded-xl border border-apple-gray-200 animated-item" style="transition-delay: 300ms;">
+                            <h4 class="font-bold text-lg">3. 降低误报率 (FAR)</h4>
+                            <p class="mt-2 text-apple-gray-600 text-base">LLM容易产生无关紧要的“挑刺” (nitpicks) 或“幻觉” (hallucinations)，给开发者带来额外负担。如何有效过滤噪声，提升信噪比？</p>
+                        </div>
+                        <!-- Challenge 4 -->
+                        <div class="bg-white p-6 rounded-xl border border-apple-gray-200 animated-item" style="transition-delay: 400ms;">
+                            <h4 class="font-bold text-lg">4. 融入人类工作流</h4>
+                            <p class="mt-2 text-apple-gray-600 text-base">审查意见必须精确地关联到具体的代码行，才能方便开发者定位和修改。这一关键的可用性问题常被忽略。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Method Section -->
+        <section id="method" class="py-20 md:py-28 bg-apple-gray-100">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title animated-item">本文方法：一个精巧的四步框架</h2>
+                    <p class="mt-6 max-w-3xl mx-auto content-text animated-item" style="transition-delay: 100ms;">
+                        为应对上述挑战，论文设计了一个解耦的、端到端的自动化流程。每一步都为最终的高质量缺陷检测服务。
+                    </p>
+                    <div class="mt-8 p-4 bg-white rounded-2xl shadow-sm inline-block animated-item" style="transition-delay: 200ms;">
+                        <img src="https://placehold.co/800x250/ffffff/1d1d1f?text=Figure+2:+自动化审查工作流概览" alt="论文中的自动化审查工作流概览" class="rounded-lg">
+                        <p class="text-center mt-3 text-sm text-apple-gray-600">论文图2：从代码切片到行号定位的完整工作流。</p>
+                    </div>
+                </div>
+
+                <!-- Step 1: Code Slicing -->
+                <div class="mt-20 space-y-16">
+                    <div class="animated-item">
+                        <h3 class="sub-title"><span class="text-apple-gray-400 mr-2">01</span>代码切片 (Code Slicing)</h3>
+                        <p class="mt-4 content-text max-w-4xl">
+                            这是解决“上下文”挑战的关键。通过静态分析，从庞大的代码库中精准提取与代码变更最相关的上下文信息，生成“代码切片”作为LLM的输入。
+                        </p>
+                        <div class="mt-8 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div class="p-6 bg-white rounded-xl"><strong>Original Diff:</strong> 仅包含代码变更本身。</div>
+                            <div class="p-6 bg-white rounded-xl"><strong>Parent Function:</strong> 包含变更所在的最小函数。</div>
+                            <div class="p-6 bg-white rounded-xl"><strong>Left Flow:</strong> 追踪变更中所有左值 (L-values) 的数据流，关注变量生命周期。</div>
+                            <div class="p-6 bg-white rounded-xl"><strong>Full Flow:</strong> 在Left Flow基础上，进一步追踪右值 (R-values) 和被调用函数，提供最全面的上下文。</div>
+                        </div>
+                        <details class="mt-6 bg-white p-4 rounded-lg">
+                            <summary class="font-medium cursor-pointer">查看代码切片伪代码 (Algorithms 1-9)</summary>
+                            <div class="mt-4 p-4 bg-apple-gray-900 text-white rounded-md overflow-x-auto">
+                                <pre><code class="text-sm">
+Algorithm 1: CodeSlicing(repository, commit, slicingOption)
+  ASTs <- ApplyStaticAnalysisTool(repository)
+  cache <- InitializeCache()
+  for each AST in ASTs do
+    ProcessAST(AST, slicingOption, cache)
+  while not cache.isEmpty() do
+    seed <- GetContiguousDiffSegment(cache)
+    newSlice <- GenerateNewSlice(seed, cache, slicingOption)
+    slices.append(newSlice)
+  return slices
+
+... (其他算法，如 ProcessAST, GenerateNewSlice, ApplySlicingAlgorithm 等)
+                                </code></pre>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Step 2: Multi-role System -->
+                    <div class="animated-item">
+                        <h3 class="sub-title"><span class="text-apple-gray-400 mr-2">02</span>多角色 LLM 系统 (Multi-role Code Review System)</h3>
+                        <p class="mt-4 content-text max-w-4xl">
+                            受“群体智慧”启发，论文构建了一个由四个不同角色的LLM组成的协作系统，通过分工与制衡，提升审查的准确性和深度。
+                        </p>
+                        <div class="mt-8 p-6 bg-white rounded-2xl">
+                             <img src="https://placehold.co/1000x400/ffffff/1d1d1f?text=Figure+3:+多角色系统协作流程图" alt="论文中的多角色系统协作流程图" class="rounded-lg shadow-md mx-auto">
+                             <p class="text-center mt-4 text-sm text-apple-gray-600">论文图3：多角色系统协作流程图。Reviewers生成初步意见，Meta-Reviewer汇总，Validators验证，Translator最终输出。</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Redundancy Filter -->
+                    <div class="animated-item">
+                        <h3 class="sub-title"><span class="text-apple-gray-400 mr-2">03</span>冗余评论过滤机制 (Redundancy Comment Filter)</h3>
+                        <p class="mt-4 content-text max-w-4xl">
+                            为解决误报率高的问题，论文设计了一个精巧的三问过滤评分机制。每个评论都需要回答以下三个问题（1-7分制）：
+                        </p>
+                         <ul class="mt-6 space-y-4">
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-blue-500 text-white font-bold text-lg mr-4">Q1</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">这是“挑刺”吗 (Is this a nitpick)?</h4>
+                                    <p class="text-apple-gray-600">例如，对代码注释、不必要的边界情况处理等过于苛刻的建议。</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-green-500 text-white font-bold text-lg mr-4">Q2</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">这是一个假问题吗 (Is this a fake problem)?</h4>
+                                    <p class="text-apple-gray-600">例如，对一个已知的可靠内部库进行空指针检查。</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-red-500 text-white font-bold text-lg mr-4">Q3</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">这个问题有多严重 (How critical is the issue)?</h4>
+                                    <p class="text-apple-gray-600">区分“缺少注释”这类小问题和“可能导致程序崩溃”这类严重问题。</p>
+                                </div>
+                            </li>
+                        </ul>
+                        <p class="mt-4 content-text max-w-4xl">
+                           通过在 Reviewer 和 Meta-Reviewer 阶段设置阈值，系统可以进行粗粒度和细粒度的两轮过滤。
+                        </p>
+                    </div>
+
+                    <!-- Step 4: Line Number Localization -->
+                    <div class="animated-item">
+                        <h3 class="sub-title"><span class="text-apple-gray-400 mr-2">04</span>行号定位 (Line Number Localization)</h3>
+                        <p class="mt-4 content-text max-w-4xl">
+                            为了让评论精准落地，论文设计了一种特殊的代码格式，将行号和操作（保留、删除、增加）直接内联到代码中，极大地提升了LLM定位问题的准确性。
+                        </p>
+                        <div class="mt-6 p-4 bg-apple-gray-900 text-white rounded-md overflow-x-auto">
+                            <pre><code class="text-sm">
+...
+  linenumber kept code line
+- linenumber deleted code line
++ linenumber added code line
+...
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Experiments Section -->
+        <section id="experiments" class="py-20 md:py-28">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title animated-item">实验与结果：用真实世界的失败来验证</h2>
+                    <p class="mt-6 max-w-3xl mx-auto content-text animated-item" style="transition-delay: 100ms;">
+                        实验设计的核心思想是：不依赖合成数据，而是使用公司内部故障报告平台上的<strong class="font-semibold text-apple-gray-800">45个真实故障案例</strong>。每个案例都曾导致实际的经济损失，这使得评估结果极具说服力。
+                    </p>
+                </div>
+
+                <!-- Metrics -->
+                <div class="mt-16 animated-item">
+                    <h3 class="sub-title text-center">评价的准绳：四大核心指标</h3>
+                    <div class="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div class="bg-apple-gray-100 p-6 rounded-xl">
+                            <h4 class="font-bold text-lg">KBI (关键缺陷召回率)</h4>
+                            <p class="mt-2 text-apple-gray-600">模型找出真正缺陷的能力。</p>
+                            <p class="mt-4 font-mono text-sm">$$ KBI = \frac{\text{召回的关键问题数}}{\text{总关键问题数}} \times 100 $$</p>
+                        </div>
+                        <div class="bg-apple-gray-100 p-6 rounded-xl">
+                            <h4 class="font-bold text-lg">FAR (误报率)</h4>
+                            <p class="mt-2 text-apple-gray-600">模型产生无关或错误评论的比例。</p>
+                             <p class="mt-4 font-mono text-sm">$$ FAR_1 = \frac{1}{N} \sum_{i=1}^{N} (\frac{\text{误报数}_i}{\text{总评论数}_i}) $$</p>
+                        </div>
+                        <div class="bg-apple-gray-100 p-6 rounded-xl">
+                            <h4 class="font-bold text-lg">CPI (综合性能指数)</h4>
+                            <p class="mt-2 text-apple-gray-600">平衡KBI和FAR，类似F1-Score。</p>
+                             <p class="mt-4 font-mono text-sm">$$ CPI_1 = 2 \times \frac{KBI \times (100 - FAR_1)}{KBI + (100 - FAR_1)} $$</p>
+                        </div>
+                        <div class="bg-apple-gray-100 p-6 rounded-xl">
+                            <h4 class="font-bold text-lg">LSR (行号定位成功率)</h4>
+                            <p class="mt-2 text-apple-gray-600">评论关联到正确代码行的准确率。</p>
+                             <p class="mt-4 font-mono text-sm">$$ LSR = \frac{1}{N} \sum_{i=1}^{N} (\frac{\text{正确定位数}_i}{\text{总评论数}_i}) $$</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Results Table -->
+                <div class="mt-20 animated-item">
+                    <h3 class="sub-title text-center">RQ1: 整体性能对比</h3>
+                    <p class="mt-4 text-center content-text max-w-3xl mx-auto">
+                        与现有SOTA基线相比，本文提出的框架在各项指标上实现了碾压式的提升。
+                    </p>
+                    <div class="mt-8 overflow-x-auto bg-white p-4 rounded-lg border">
+                        <p class="text-center font-semibold mb-4">Table 2: 整体性能对比 (部分数据)</p>
+                        <table class="latex-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Val</th>
+                                    <th>KBI $\uparrow$</th>
+                                    <th>$FAR_1 \downarrow$</th>
+                                    <th>$CPI_1 \uparrow$</th>
+                                    <th>$FAR_2 \downarrow$</th>
+                                    <th>$CPI_2 \uparrow$</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="7" class="font-bold bg-apple-gray-200">Baselines</td></tr>
+                                <tr>
+                                    <td>CodeReviewer</td>
+                                    <td>-</td>
+                                    <td>0.00</td>
+                                    <td>97.78</td>
+                                    <td>0.00</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td>CCT5</td>
+                                    <td>-</td>
+                                    <td>2.22</td>
+                                    <td>97.58</td>
+                                    <td>2.32</td>
+                                    <td>90.91</td>
+                                    <td>3.57</td>
+                                </tr>
+                                <tr><td colspan="7" class="font-bold bg-apple-gray-200">Ours (Full Flow)</td></tr>
+                                <tr>
+                                    <td>LLaMA3.1 (405B)</td>
+                                    <td>w/o</td>
+                                    <td>31.11</td>
+                                    <td>89.41</td>
+                                    <td>15.80</td>
+                                    <td>73.10</td>
+                                    <td>28.86</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>LLaMA3.1 (405B)</strong></td>
+                                    <td><strong>w/</strong></td>
+                                    <td><strong>20.00</strong></td>
+                                    <td><strong>77.96</strong></td>
+                                    <td><strong>20.97</strong></td>
+                                    <td><strong>67.59</strong></td>
+                                    <td><strong>24.73</strong></td>
+                                </tr>
+                                 <tr>
+                                    <td><strong>Mistral-2407 (123B)</strong></td>
+                                    <td><strong>w/</strong></td>
+                                    <td><strong>28.89</strong></td>
+                                    <td><strong>86.11</strong></td>
+                                    <td><strong>18.76</strong></td>
+                                    <td><strong>67.30</strong></td>
+                                    <td><strong>30.68</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mt-6 text-center content-text">
+                        <strong>核心结论:</strong> 本文框架性能远超基线 (KBI/CPI提升高达 <strong class="highlight">10倍</strong>)，证明了其端到端设计的有效性。在所有测试的LLM中，LLaMA3.1-405B 和 Mistral-2407 表现突出，尤其在加入Validator角色后，综合性能 (CPI) 达到最优。
+                    </p>
+                </div>
+
+                <!-- Other RQs -->
+                <div class="mt-20 grid md:grid-cols-2 gap-12">
+                    <div class="animated-item">
+                        <h3 class="sub-title">RQ2: 代码切片的影响</h3>
+                        <div class="mt-4 p-4 bg-apple-gray-100 rounded-lg">
+                             <img src="https://placehold.co/600x400/f5f5f7/1d1d1f?text=Figure+4:+Venn+Diagram" alt="Venn图显示不同切片算法召回的缺陷" class="rounded-md shadow-sm mx-auto">
+                        </div>
+                        <p class="mt-4 content-text">
+                            基于流的切片方法 (<strong>Left Flow</strong> 和 <strong>Full Flow</strong>) 显著优于简单方法。有趣的是，提供更精简上下文的 <strong>Left Flow</strong> 在某些情况下甚至比 Full Flow 效果更好，可能是因为它避免了LLM的“注意力分散”。此外，不同切片方法能独立发现一些特定缺陷，暗示了组合策略的潜力。
+                        </p>
+                    </div>
+                    <div class="animated-item">
+                        <h3 class="sub-title">RQ3: 多角色系统的作用</h3>
+                        <p class="mt-4 content-text">
+                            增加 Reviewer 数量能提升KBI，但也引入更多噪声 (FAR升高)。<strong>Validator</strong> 角色至关重要，它能有效过滤误报，在召回率和精确率之间取得平衡。<strong>Chain-of-Thought (CoT)</strong> 在处理复杂上下文 (如Flow-based切片) 时优势明显。
+                        </p>
+                    </div>
+                    <div class="animated-item">
+                        <h3 class="sub-title">RQ4: 过滤机制的有效性</h3>
+                        <p class="mt-4 content-text">
+                            过滤机制的每个阶段都有效。对于信息丰富的Flow-based切片，多阶段过滤能持续降低FAR，提升CPI。对于上下文简单的切片，第一轮粗粒度过滤效果最显著。
+                        </p>
+                    </div>
+                    <div class="animated-item">
+                        <h3 class="sub-title">RQ5: 行号定位的重要性</h3>
+                        <p class="mt-4 content-text">
+                            提供行号信息，特别是采用<strong>内联 (Inline) 格式</strong>，能同时提升模型的审查性能 (KBI, CPI) 和定位准确率 (LSR)。这证明了精确的上下文锚定对LLM至关重要。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Review Section -->
+        <section id="review" class="py-20 md:py-28 bg-apple-gray-900 text-white">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title text-white animated-item">我的评论：一个犀利的 Reviewer 视角</h2>
+                    <p class="mt-6 text-xl text-apple-gray-300 animated-item" style="transition-delay: 100ms;">
+                        作为一名AI研究者，我认为这篇工作是近年来代码智能领域一次<strong class="font-semibold text-white">务实且深刻</strong>的探索。它没有追逐模型参数的“军备竞赛”，而是回归本源，解决了学术研究与工业实践脱节的关键问题。
+                    </p>
+                </div>
+
+                <div class="mt-16 grid md:grid-cols-2 gap-10">
+                    <div class="animated-item" style="transition-delay: 200ms;">
+                        <h3 class="text-2xl font-bold text-green-400">优势 (Strengths)</h3>
+                        <ul class="mt-6 space-y-4 list-disc list-inside text-lg text-apple-gray-200">
+                            <li><strong class="font-semibold text-white">问题定义精准：</strong> 首次将自动化代码审查从“代码翻译”任务，提升到“面向缺陷的、合并请求粒度的”工业级任务，切中要害。</li>
+                            <li><strong class="font-semibold text-white">评估体系科学：</strong> 抛弃了误导性的BLEU/ROUGE，采用KBI/FAR/CPI等更贴近商业价值的指标，为领域树立了新标杆。</li>
+                            <li><strong class="font-semibold text-white">方法论系统化：</strong> 提出的“切片-多角色-过滤-定位”四步法，逻辑清晰，每个模块都通过详尽的消融实验证明了其不可或缺性。</li>
+                            <li><strong class="font-semibold text-white">数据驱动真实：</strong> 使用导致真实损失的故障报告作为评估集，其说服力远非公开的、经过清洗的数据集可比。</li>
+                        </ul>
+                    </div>
+                    <div class="animated-item" style="transition-delay: 300ms;">
+                        <h3 class="text-2xl font-bold text-orange-400">不足与改进方向 (Weaknesses & Future Work)</h3>
+                        <ul class="mt-6 space-y-4 list-disc list-inside text-lg text-apple-gray-200">
+                            <li><strong class="font-semibold text-white">语言局限性：</strong> 目前仅在C++上验证，虽然框架设计是语言无关的，但扩展到其他语言（如Python, Go）需要适配相应的静态分析工具，工作量不小。</li>
+                            <li><strong class="font-semibold text-white">误报率仍有优化空间：</strong> 尽管FAR通过过滤大幅降低，但对于追求极致开发者体验的场景，仍然偏高。未来可以探索基于机器学习的自适应过滤阈值。</li>
+                            <li><strong class="font-semibold text-white">策略组合的复杂性：</strong> 最佳的切片策略、Reviewer数量等似乎依赖于具体场景，未来可以研究一种“自适应”框架，能根据代码变更的复杂性动态选择最优策略组合。</li>
+                            <li><strong class="font-semibold text-white">缺乏真实用户研究：</strong> 尽管指标很亮眼，但缺少一个正式的用户研究 (User Study) 来评估开发者在真实工作流中对该工具的满意度和采纳意愿。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-apple-gray-100">
+        <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-apple-gray-600">网页由 Gemini 根据论文《Towards Practical Defect-Focused Automated Code Review》生成。</p>
+            <p class="mt-2 text-sm text-apple-gray-500">
+                Lu, J., Jiang, L., Li, X., et al. (2025). In Proceedings of the 42nd International Conference on Machine Learning.
+            </p>
+             <p class="mt-4">
+                <a href="https://proceedings.mlr.press/v267/lu25a.html" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">
+                    阅读原始论文
+                </a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Simple fade-in animation on scroll
+        const animatedItems = document.querySelectorAll('.animated-item');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+
+        animatedItems.forEach(item => {
+            observer.observe(item);
+        });
+    </script>
+</body>
+</html>

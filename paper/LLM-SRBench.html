@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深度解析: LLM-SRBench - 面向科学方程发现的新基准</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax 3 Configuration for LaTeX Rendering -->
+    <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        packages: {'[+]': ['noerrors']}
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        ignoreHtmlClass: 'tex2jax_ignore',
+        processHtmlClass: 'tex2jax_process'
+      },
+      loader: {
+        load: ['[tex]/noerrors']
+      }
+    };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script"></script>
+
+    <style>
+        :root {
+            --bg-color: #111827; /* gray-900 */
+            --text-color: #e5e7eb; /* gray-200 */
+            --primary-color: #3b82f6; /* blue-500 */
+            --card-bg: #1f2937; /* gray-800 */
+            --border-color: #374151; /* gray-700 */
+            --header-text: #f9fafb; /* gray-50 */
+        }
+        
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            font-weight: 700;
+            color: var(--header-text);
+        }
+
+        h2 {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        .section-card.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .latex-block {
+            background-color: #111827;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+        
+        .highlight {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        code {
+            background-color: #374151;
+            color: #d1d5db;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        
+        pre {
+            background-color: #111827;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: left;
+        }
+        th {
+            background-color: var(--card-bg);
+            color: var(--header-text);
+        }
+        
+        .placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #374151;
+            border: 2px dashed #4b5563;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            color: #9ca3af;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- Header -->
+    <header class="py-12 px-4 text-center">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-4xl md:text-6xl font-bold tracking-tight text-gray-50">LLM-SRBench 深度解析</h1>
+            <p class="mt-4 text-lg md:text-xl text-gray-400">面向下一代科学发现：评估大语言模型的真实推理能力</p>
+            <p class="mt-2 text-sm text-gray-500">论文: 2504.10415v2 [cs.CL]</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-4 py-8 max-w-4xl mx-auto">
+
+        <!-- 1. 研究动机 -->
+        <section id="motivation" class="section-card">
+            <h2 class="text-3xl font-bold">研究动机：超越记忆的科学发现</h2>
+            <p class="mt-4 text-lg leading-relaxed">
+                科学方程发现，即从观测数据中推导出数学表达式，是科学进步的基石。近年来，大语言模型 (LLM) 因其庞大的内置科学知识库，在这一领域展现出巨大潜力。然而，评估 LLM 真实的“发现”能力面临一个严峻挑战：<strong class="highlight">模型记忆</strong>。
+            </p>
+            <blockquote class="mt-6 border-l-4 border-blue-500 pl-4 italic text-gray-300">
+                现有基准（如 Feynman Benchmark）大多包含教科书中广为人知的方程。LLM 可以轻易地通过“背诵”而非真正的“推理”来解决这些问题，导致性能指标虚高，无法反映其真实的科学发现能力。
+            </blockquote>
+            <p class="mt-6 leading-relaxed">
+                如论文图1所示，在 Feynman 基准测试中，数值误差（NMSE）在几次迭代后就急剧下降，最终符号错误率极低。这更像是模型识别出了问题并直接给出了记忆中的答案，而非一个渐进的、数据驱动的发现过程。
+            </p>
+            <div class="placeholder mt-6">
+                [论文图1: Feynman Benchmark 与 LLM-SRBench 的误差对比图]
+                <br>
+                <span class="text-sm">该图表显示，在 Feynman 基准上，LLM 的数值误差迅速下降，符号错误率远低于在 LLM-SRBench 上的表现，暗示了记忆而非推理。</span>
+            </div>
+            <p class="mt-6 leading-relaxed">
+                因此，本文的<strong class="highlight">核心动机</strong>是创建一个全新的、更具挑战性的基准测试——<strong class="highlight">LLM-SRBench</strong>。该基准旨在系统性地评估 LLM 在科学方程发现中的推理能力，同时有效规避模型的直接记忆。
+            </p>
+        </section>
+
+        <!-- 2. 数学表示及建模 -->
+        <section id="modeling" class="section-card">
+            <h2 class="text-3xl font-bold">数学表示及建模</h2>
+            <p class="mt-4 leading-relaxed">
+                LLM-SRBench 的设计哲学是通过构建 LLM 未曾“见过”的问题来测试其推理能力。它包含两大类问题：<strong class="highlight">LSR-Transform</strong> 和 <strong class="highlight">LSR-Synth</strong>。
+            </p>
+
+            <h3 class="text-2xl mt-8 mb-4">2.1 LSR-Transform: 变换已知，考验推理</h3>
+            <p>
+                这一类别旨在测试 LLM 是否能发现同一物理问题在不同数学表示下的形式。研究发现，LLM 的推理能力在面对不熟悉的问题表示时会变得很脆弱。LSR-Transform 正是利用了这一点。
+            </p>
+            <p class="mt-4">其生成流程（如图3(a)所示）包含七个关键步骤：</p>
+            <ol class="list-decimal list-inside mt-4 space-y-2">
+                <li><strong>方程收集</strong>: 从 Feynman 基准中收集原始方程、变量和问题描述。</li>
+                <li><strong>选择枢轴变量</strong>: 选取一个输入特征作为新的目标变量。</li>
+                <li><strong>特征-目标转换</strong>: 交换所选输入特征与原始目标变量的角色。</li>
+                <li><strong>符号变换</strong>: 使用 SymPy 等符号计算库，求解以新目标变量表示的方程。</li>
+                <li><strong>可解性检查</strong>: 只保留那些能够被解析求解的变换。</li>
+                <li><strong>数据集精炼</strong>: 过滤掉在新方程定义域下无效的数据点。</li>
+                <li><strong>问题重构</strong>: 使用 LLM (GPT-4o) 为变换后的问题生成新的自然语言描述。</li>
+            </ol>
+            
+            <p class="mt-6"><strong>示例: 谐振子能量方程</strong></p>
+            <p>原始问题是求解总能量 $E$:</p>
+            <div class="latex-block">
+                $$ E = \frac{1}{4}m(\omega^2 + \omega_0^2)x^2 $$
+            </div>
+            <p>通过 LSR-Transform，我们可以生成求解质量 $m$ 或角频率 $\omega$ 的新问题：</p>
+            <div class="latex-block">
+                $$ m = \frac{4E}{(\omega^2 + \omega_0^2)x^2} $$
+                $$ \omega = \sqrt{\frac{4E}{mx^2} - \omega_0^2} $$
+            </div>
+            <p>这些新方程在物理上是等价的，但其数学形式不常见，对 LLM 构成了真正的推理挑战。</p>
+
+            <h3 class="text-2xl mt-8 mb-4">2.2 LSR-Synth: 合成未知，驱动发现</h3>
+            <p>
+                这一类别旨在评估 LLM 在面对包含全新合成项的方程时的发现能力。它要求模型不仅要利用先验科学知识，还必须进行强大的数据驱动推理。
+            </p>
+            <p class="mt-4">其生成流程（如图3(b)所示）同样精心设计：</p>
+            <ol class="list-decimal list-inside mt-4 space-y-2">
+                <li><strong>选择科学问题</strong>: 从化学、生物、物理等领域选择核心问题（如反应动力学）。</li>
+                <li><strong>生成已知项</strong>: 提示 LLM 生成该问题下常见的、众所周知的数学项。</li>
+                <li><strong>生成合成项</strong>: 提示 LLM 生成新颖但看似合理的合成项。</li>
+                <li><strong>可解性检查</strong>: 组合已知项和合成项，并用数值求解器验证其可解性。</li>
+                <li><strong>新颖性检查</strong>: 使用 LLM 评估合成方程的新颖性，确保其需要数据驱动发现。</li>
+                <li><strong>数据点生成</strong>: 为通过检查的方程生成数值数据。</li>
+                <li><strong>专家验证</strong>: 由领域专家交叉验证方程和数据的合理性。</li>
+            </ol>
+
+            <p class="mt-6"><strong>示例: 化学反应动力学</strong></p>
+            <p>对于反应速率 $\frac{dA}{dt}$，方程可能由 <span class="text-green-400">已知项</span> 和 <span class="text-red-400">合成项</span> 构成：</p>
+            <div class="latex-block">
+                $$ \frac{dA}{dt} = \overbrace{-C_0A(t)^2}^{\text{已知项: 二阶动力学}} \overbrace{- C_1\sqrt{A(t)} - C_2\cos(\log(A(t)+1))}^{\text{合成项: 非标准、非线性效应}} $$
+            </div>
+            <p>这样的问题迫使模型不能依赖记忆，必须从数据中发现合成项所代表的未知规律。</p>
+        </section>
+
+        <!-- 3. 实验方法与实验设计 -->
+        <section id="experiments" class="section-card">
+            <h2 class="text-3xl font-bold">实验方法与实验设计</h2>
+            <p class="mt-4 leading-relaxed">
+                为了全面评估，论文在 LLM-SRBench 上测试了多种当前最先进的 (SOTA) 基于 LLM 的科学方程发现方法。
+            </p>
+            <h3 class="text-2xl mt-8 mb-4">3.1 基线方法</h3>
+            <ul class="list-disc list-inside space-y-3">
+                <li><strong>LLM-SR</strong>: 一种程序搜索方法，将方程骨架生成为 Python 函数，并结合多岛屿进化搜索进行优化。</li>
+                <li><strong>LaSR</strong>: 一种概念学习方法，从成功的方程中抽象出文本概念，并用这些概念指导混合进化搜索。</li>
+                <li><strong>SGA (Scientific Generative Agent)</strong>: 一种双层优化方法，LLM 负责生成离散的科学定律假设，物理模拟器负责进行连续参数优化。</li>
+                <li><strong>Direct Prompting (DataBlind)</strong>: 一个基线方法，纯粹依赖 LLM 的上下文信息生成假设，<strong class="highlight">无法访问数据</strong>，用于衡量模型的记忆程度。</li>
+            </ul>
+
+            <h3 class="text-2xl mt-8 mb-4">3.2 模型与超参数</h3>
+            <p>实验使用了三种 LLM 后端：<code class="font-mono">Llama-3.1-8B-Instruct</code> (开源), <code class="font-mono">GPT-4o-mini</code> (闭源), 和 <code class="font-mono">GPT-3.5-turbo</code> (闭源)。为保证公平，每种方法在每个问题上的 LLM 调用预算被标准化为 1000 次。关键超参数设置参考了原论文的实现（见附录C）。</p>
+            <div class="placeholder mt-6">
+                [论文表2: 各方法实现细节]
+                <br>
+                <span class="text-sm">该表格详细列出了每个基线方法的关键超参数，如 SGA 的优化器、LaSR 的迭代次数、LLM-SR 的并行评估器数量等，是复现实验的核心。</span>
+            </div>
+
+            <h3 class="text-2xl mt-8 mb-4">3.3 评估指标</h3>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="text-xl font-semibold">数据保真度 (Data Fidelity)</h4>
+                    <p class="mt-2">衡量方程与数据的拟合程度。</p>
+                    <p class="mt-4"><strong>容忍度准确率 ($Acc_{\tau}$):</strong></p>
+                    <div class="latex-block">
+                        $$ Acc_{\tau} = \mathbb{I}\left(\max_{1\le i\le N_{\text{test}}}\left|\frac{\hat{y}_{i}-y_{i}}{y_{i}}\right|\le\tau\right) $$
+                    </div>
+                    <p class="mt-4"><strong>归一化均方误差 (NMSE):</strong></p>
+                    <div class="latex-block">
+                        $$ \text{NMSE} = \frac{\sum_{i=1}^{N_{\text{test}}}(\hat{y}_i - y_i)^2}{\sum_{i=1}^{N_{\text{test}}}(y_i - \bar{y})^2} $$
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xl font-semibold">符号准确度 (Symbolic Accuracy)</h4>
+                    <p class="mt-2">衡量发现的方程与真实方程在数学结构上的一致性。</p>
+                    <p class="mt-4">由于传统指标（如精确匹配）过于死板，本文创新地使用 <strong class="highlight">GPT-4o 作为评估器</strong>。它通过比较预测假设与真实方程的符号形式（移除常数后）来判断两者在数学上是否等价。这种方法能更好地处理不同表示形式（字符串、表达式树、程序）下的等价性问题。</p>
+                    <p class="mt-2">人工验证表明，GPT-4o 评估器与人类专家的判断一致性高达 <strong class="highlight">94.6%</strong>。</p>
+                </div>
+            </div>
+            
+            <h3 class="text-2xl mt-8 mb-4">3.4 复现用 Prompts (源自附录)</h3>
+            <p>为了达到可复现的程度，以下是 LLM-SR 方法使用的核心 Prompt 结构。</p>
+            <pre class="text-sm mt-4"><code class="language-python">
+# 1. 指令 Prompt
+You are a helpful assistant tasked with discovering mathematical function structures for scientific systems. Complete the 'equation' function below, considering the physical meaning and relationships of inputs.
+
+# 2. 评估规范 Prompt
+import numpy as np
+MAX_NPARAMS = 10
+params = [1.0] * MAX_NPARAMS
+def evaluate(data: dict) -> float:
+    """Evaluate the equation on data observations."""
+    # ... (省略参数优化和损失计算逻辑)
+
+# 3. 待完成的函数示例
+### Function Examples
+def equation_v0(INPUT_VAR_0, ..., INPUT_VAR_N, params):
+    """ Mathematical function for OUTPUT_VAR_DESC """
+    # ... (示例1的逻辑)
+
+def equation_v1(INPUT_VAR_0, ..., INPUT_VAR_N, params):
+    # ... (示例2的逻辑)
+
+### Function to be completed
+def equation(INPUT_VAR_0, ..., INPUT_VAR_N, params):
+    """Improvement version of equation_v0 and equation_v1"""
+    # LLM 在这里生成代码
+            </code></pre>
+            <p class="mt-2 text-sm text-gray-400">*注：LaSR 和 SGA 的 Prompts 结构更复杂，详细内容见原论文附录C.2.2和C.2.3。</p>
+        </section>
+
+        <!-- 4. 实验结果及核心结论 -->
+        <section id="results" class="section-card">
+            <h2 class="text-3xl font-bold">实验结果及核心结论</h2>
+            <p class="mt-4 leading-relaxed">
+                实验结果揭示了当前 LLM 在真实科学发现任务中的能力与局限。
+            </p>
+            
+            <h3 class="text-2xl mt-8 mb-4">4.1 核心性能对比</h3>
+            <p>下表展示了各方法在 LLM-SRBench 上的表现。最核心的发现是：</p>
+            <blockquote class="mt-4 border-l-4 border-blue-500 pl-4 italic text-gray-300">
+                即使是表现最好的方法 (LLM-SR + GPT-4o-mini)，在 LSR-Transform 上的符号准确度也仅为 <strong class="highlight">31.53%</strong>，在 LSR-Synth 上更低。这充分说明了 LLM-SRBench 的挑战性。
+            </blockquote>
+            
+            <div class="overflow-x-auto mt-6">
+                <p class="text-center font-semibold mb-2">论文核心结果概览 (Table 1 节选)</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>模型</th>
+                            <th>LLM 后端</th>
+                            <th>数据集</th>
+                            <th>符号准确度 (SA %)</th>
+                            <th>数值精度 (Acc_0.1 %)</th>
+                            <th>NMSE</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-300">
+                        <tr>
+                            <td>Direct Prompting</td>
+                            <td>GPT-4o-mini</td>
+                            <td>LSR-Transform</td>
+                            <td>7.21</td>
+                            <td>6.31</td>
+                            <td>0.2631</td>
+                        </tr>
+                        <tr>
+                            <td>SGA</td>
+                            <td>GPT-4o-mini</td>
+                            <td>LSR-Transform</td>
+                            <td>9.91</td>
+                            <td>8.11</td>
+                            <td>0.2321</td>
+                        </tr>
+                        <tr>
+                            <td>LaSR</td>
+                            <td>GPT-4o-mini</td>
+                            <td>LSR-Transform</td>
+                            <td>6.31</td>
+                            <td class="font-bold text-blue-400">50.45</td>
+                            <td class="font-bold text-blue-400">0.0011</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-green-400">LLM-SR</td>
+                            <td>GPT-4o-mini</td>
+                            <td>LSR-Transform</td>
+                            <td class="font-bold text-green-400">31.53</td>
+                            <td>39.64</td>
+                            <td>0.0091</td>
+                        </tr>
+                         <tr>
+                            <td class="font-bold text-green-400">LLM-SR</td>
+                            <td>GPT-4o-mini</td>
+                            <td>LSR-Synth (综合)</td>
+                            <td class="font-bold text-green-400">28.1</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-2xl mt-8 mb-4">4.2 关键洞察 (Insights)</h3>
+            <ul class="list-disc list-inside space-y-4 mt-6">
+                <li>
+                    <strong>数据驱动至关重要</strong>: `Direct Prompting` (无数据) 方法性能极差，证明了仅靠先验知识无法完成方程发现，必须结合数据进行推理和优化。
+                </li>
+                <li>
+                    <strong>LSR-Transform vs. Feynman</strong>: 即便在相同的方程复杂度下，LSR-Transform 上的性能也远低于 Feynman 基准（如图4所示），有力地证明了该基准成功地抑制了模型记忆。
+                    <div class="placeholder mt-2">[论文图4: Feynman 与 LSR-Transform 在不同复杂度下的性能对比]</div>
+                </li>
+                <li>
+                    <strong>泛化能力是关键</strong>: 实验对 LSR-Synth 数据集进行了域内 (In-Domain) 和域外 (Out-of-Domain, OOD) 测试。结果显示，所有方法在 OOD 上的性能都有所下降（如图5所示），这符合预期。
+                    <div class="placeholder mt-2">[论文图5: 各方法在不同科学领域的 ID 与 OOD 性能对比]</div>
+                </li>
+                 <li>
+                    <strong>符号准确度与泛化能力强相关</strong>: 一个非常重要的发现是，符号准确度越高的模型，其在 OOD 数据上的数值精度也越高（如图6所示）。这验证了发现“正确”的方程结构是实现良好泛化的前提，也从侧面印证了本文提出的 LLM 评估方法的有效性。
+                    <div class="placeholder mt-2">[论文图6: 符号准确度与 OOD 性能的相关性分析]</div>
+                </li>
+            </ul>
+        </section>
+        
+        <!-- 5. 自由发挥：变换的意义 -->
+        <section id="discussion" class="section-card">
+            <h2 class="text-3xl font-bold">思考：变换后的方程有意义吗？</h2>
+            <p class="mt-4 leading-relaxed">
+                这是我对论文附录E中一段精彩讨论的提炼。一个自然的问题是，LSR-Transform 中那些经过数学变换后的方程，是否还具有真实的科学意义？
+            </p>
+            <p class="mt-4 leading-relaxed">
+                答案是：<strong class="highlight">部分有，部分没有，但这本身就揭示了更深层次的问题。</strong>
+            </p>
+            <div class="grid md:grid-cols-2 gap-6 mt-6">
+                <div class="bg-gray-900 p-4 rounded-lg border border-green-500">
+                    <h4 class="text-xl font-semibold text-green-400">有意义的变换</h4>
+                    <p class="mt-2">许多变换对应着工程设计中的逆问题。例如，从谐振子能量方程 $E = f(m, ...)$ 变换为 $m = g(E, ...)$，前者是分析问题（给定参数求能量），后者是设计问题（要存储特定能量需要多大质量的物体）。这种变换在现实中非常普遍且有价值。</p>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg border border-yellow-500">
+                    <h4 class="text-xl font-semibold text-yellow-400">意义模糊的变换</h4>
+                    <p class="mt-2">另一些变换可能在数学上成立，但物理直觉模糊。例如，将“力导致加速度” ($F=ma$) 变换为“加速度决定力” ($F=ma$)，虽然数学上等价，但可能颠倒了物理上的因果关系。更复杂的变换可能产生物理上难以解释的表达式。</p>
+                </div>
+            </div>
+            <p class="mt-6 leading-relaxed">
+                这一讨论的价值在于，它指出了自动化科学发现的一个核心挑战：<strong class="highlight">数学上的正确性不等于科学上的有意义性</strong>。未来的发现系统不仅要能找到拟合数据的方程，还必须能评估其科学合理性、可解释性和新颖性。这可能需要 AI 系统与人类科学家更紧密的协作。
+            </p>
+        </section>
+
+        <!-- 6. 评论 -->
+        <section id="review" class="section-card">
+            <h2 class="text-3xl font-bold">Reviewer 的评论</h2>
+            <p class="mt-4 leading-relaxed">
+                作为一名 AI 研究者，我认为 LLM-SRBench 是一项非常扎实且重要的工作。它精准地指出了当前领域的一个关键痛点，并提出了一个设计精良的解决方案。
+            </p>
+            <h3 class="text-2xl mt-8 mb-4">优势 (Strengths)</h3>
+            <ul class="list-disc list-inside space-y-3">
+                <li><strong>切中要害</strong>: 首次系统性地解决了 LLM 在方程发现任务中的“记忆”问题，推动了评估标准的进步。</li>
+                <li><strong>设计巧妙</strong>: `LSR-Transform` 和 `LSR-Synth` 两种策略互为补充，前者考验对已知知识的灵活运用，后者考验对未知规律的探索，覆盖了科学发现的两种核心模式。</li>
+                <li><strong>评估严谨</strong>: 采用了创新的 LLM-based 符号评估方法，并用 OOD 泛化能力进行交叉验证，评估体系全面且有说服力。</li>
+                <li><strong>结论清晰</strong>: 实验结果有力地证明了现有 SOTA 方法的局限性，为未来的研究指明了方向，即需要更强的推理和探索能力。</li>
+            </ul>
+            <h3 class="text-2xl mt-8 mb-4">不足与改进方向 (Weaknesses & Future Work)</h3>
+            <ul class="list-disc list-inside space-y-3">
+                <li><strong>变换的局限性</strong>: `LSR-Transform` 目前主要依赖代数变换。未来可以探索更复杂的变换，如涉及微积分（积分、微分）的变换，这将对模型的数学推理能力提出更高要求。</li>
+                <li><strong>合成项的偏见</strong>: `LSR-Synth` 中的合成项由 LLM 生成，这可能引入某种难以察觉的偏见（即 LLM 更倾向于生成某些特定结构的“新颖”项）。未来的工作可以探索其他合成项的生成机制。</li>
+                <li><strong>科学意义的评估</strong>: 如前所述，自动评估发现的方程是否“科学上有意义”是一个开放性难题。未来可以尝试让 LLM 结合知识图谱或检索外部文献来对假设进行多维度（如新颖性、一致性、可解释性）打分。</li>
+                <li><strong>多模态融合</strong>: 真实的科学发现往往不只有表格数据，还包括图像、文本等。未来的基准和模型可以探索如何融合多模态信息来进行方程发现。</li>
+            </ul>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-8 px-4 border-t border-gray-700 text-gray-500">
+        <p>&copy; 2025 论文深度解析。由 Gemini 精心生成。</p>
+        <p class="mt-2 text-sm">本文内容基于学术论文 arXiv:2504.10415v2，旨在以信息可视化的方式进行解读和评论。</p>
+    </footer>
+
+    <script>
+        // Simple Intersection Observer for fade-in animation
+        const cards = document.querySelectorAll('.section-card');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+
+        cards.forEach(card => {
+            observer.observe(card);
+        });
+    </script>
+
+</body>
+</html>

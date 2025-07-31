@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式盛水容器可视化工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Helvetica Neue', 'Arial', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .bar {
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .water {
+            transition: all 0.3s ease-in-out;
+        }
+        .info-box {
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .btn-primary {
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .content-card {
+            background-color: white;
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col items-center min-h-screen p-4 md:p-8">
+
+    <div class="w-full max-w-5xl mx-auto">
+        <!-- Header Section -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">盛最多水的容器</h1>
+            <p class="mt-2 text-gray-600 max-w-2xl mx-auto">一个交互式可视化工具，用于理解“双指针”算法如何解决这个问题。</p>
+        </header>
+
+        <!-- Input Section -->
+        <div class="content-card p-6 mb-8">
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+                <label for="heightInput" class="font-semibold text-gray-700 whitespace-nowrap">输入高度数组 (逗号分隔):</label>
+                <input type="text" id="heightInput" class="flex-grow w-full bg-gray-100 border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" value="1,8,6,2,5,4,8,3,7">
+                <button id="visualizeBtn" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 btn-primary">开始可视化</button>
+            </div>
+        </div>
+
+        <!-- Main Content: Visualization and Info -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Visualization Area -->
+            <div id="visualizationContainer" class="content-card lg:col-span-2 p-6 min-h-[300px] md:min-h-[400px] flex items-end justify-center relative overflow-hidden">
+                <div id="chart" class="w-full h-full flex items-end justify-around gap-1 relative">
+                    <!-- Bars will be injected here -->
+                </div>
+                <!-- Water Area -->
+                <div id="water" class="absolute bg-blue-400 bg-opacity-50 border-2 border-blue-500 bottom-0 water" style="display: none;"></div>
+            </div>
+
+            <!-- Information Panel -->
+            <div class="content-card p-6 flex flex-col">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 border-b pb-2">算法状态</h2>
+                <div id="infoPanel" class="space-y-3 text-sm md:text-base flex-grow">
+                    <p>输入数组并点击 "开始可视化"。</p>
+                </div>
+                <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                    <button id="stepBtn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 btn-primary" disabled>下一步</button>
+                    <button id="resetBtn" class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 btn-primary" disabled>重置</button>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Current Step Explanation Panel -->
+        <div id="explanationPanel" class="content-card mt-8 p-6">
+             <h3 class="text-lg font-bold text-gray-800 mb-2">当前步骤决策</h3>
+             <p id="explanationText" class="text-gray-600">...</p>
+        </div>
+
+        <!-- In-depth Explanation Section -->
+        <section class="content-card mt-8 p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">解题思路深度解析</h2>
+            <div class="space-y-4 text-gray-700 leading-relaxed">
+                <p>双指针方法的核心在于一个非常巧妙的 **“缩减搜索空间”** 思维。我们的目标是找到 \(Area = width \times height\) 的最大值，即 \((j - i) \times \min(height[i], height[j])\) 的最大值。</p>
+                <div>
+                    <h3 class="text-lg font-semibold mt-4 mb-2">1. 初始状态：最大宽度</h3>
+                    <p>我们从数组的两端开始，<code>left</code> 指针在最左，<code>right</code> 指针在最右。这时，容器的宽度 <code>right - left</code> 是所有可能组合中最大的。这是我们寻找最大面积的最佳起点。</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mt-4 mb-2">2. 关键决策：移动哪个指针？</h3>
+                    <p>在每一步，我们都需要向内移动一个指针来探索新的可能性。假设当前 \(height[left] < height[right]\)，即左边的柱子是短板：</p>
+                    <ul class="list-disc list-inside mt-2 space-y-2 pl-4">
+                        <li><strong class="text-red-600">如果移动右指针 (高板)</strong>：新的右指针 <code>right-1</code> 指向的板，无论其高度是多少，新的容器高度最多也只能是 \(height[left]\) (因为左板没变，它仍然是短板)。然而，宽度 \((right-1) - left\) 已经明确变小了。所以，新宽度 < 旧宽度 且 新高度 ≤ 旧高度。这意味着新面积<strong>绝对不可能</strong>超过当前面积。因此，移动高板的指针是一个无效的、可以被安全排除的策略。</li>
+                        <li><strong class="text-green-600">如果移动左指针 (短板)</strong>：我们丢弃了当前的短板 \(height[left]\)。新的左指针 <code>left+1</code> 指向的板，其高度 \(height[left+1]\) <strong>有可能</strong>会比原来的 \(height[left]\) 更高。虽然宽度也减小了，但如果新的高度能足够大，就<strong>有可能</strong>弥补宽度的损失，从而形成一个更大的面积。这为找到更大的面积提供了唯一的可能性。</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mt-4 mb-2">3. 结论</h3>
+                    <p>通过始终移动指向<strong>较短</strong>那根柱子的指针，我们实际上是在进行一次聪明的筛选。每一步我们都在说：“我已经利用这根短板在当前最大宽度下得到了最大可能面积，这根短板的潜力已经挖掘完毕，不会再有以它为边界的更大容器了，可以安心地丢弃它去寻找下一个可能。”</p>
+                    <p class="mt-2">这个简单的贪心策略确保了我们不会错过任何可能的最优解，同时又以线性的时间复杂度 \(O(n)\) 高效地完成了搜索。</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // DOM Elements
+        const heightInput = document.getElementById('heightInput');
+        const visualizeBtn = document.getElementById('visualizeBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const chart = document.getElementById('chart');
+        const water = document.getElementById('water');
+        const infoPanel = document.getElementById('infoPanel');
+        const explanationText = document.getElementById('explanationText');
+
+        // State variables
+        let heights = [];
+        let left, right, maxArea, step;
+        let barElements = [];
+
+        // Event Listeners
+        visualizeBtn.addEventListener('click', initialize);
+        stepBtn.addEventListener('click', runStep);
+        // FIXED: Reset button now calls a dedicated reset function
+        resetBtn.addEventListener('click', resetApplication);
+
+        function resetApplication() {
+            // Re-enable editing and visualization
+            heightInput.disabled = false;
+            visualizeBtn.disabled = false;
+
+            // Disable controls
+            stepBtn.disabled = true;
+            resetBtn.disabled = true;
+
+            // Clear the visualization and text panels
+            chart.innerHTML = '';
+            water.style.display = 'none';
+            infoPanel.innerHTML = '<p>输入数组并点击 "开始可视化"。</p>';
+            explanationText.textContent = '...';
+        }
+
+        function initialize() {
+            const input = heightInput.value.trim();
+            if (!input) {
+                alert('请输入有效的高度数组！');
+                return;
+            }
+            
+            heights = input.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n >= 0);
+
+            if (heights.length < 2) {
+                alert('数组至少需要包含两个数字！');
+                return;
+            }
+
+            left = 0;
+            right = heights.length - 1;
+            maxArea = 0;
+            step = 0;
+
+            // Lock input and enable controls
+            stepBtn.disabled = false;
+            resetBtn.disabled = false;
+            visualizeBtn.disabled = true;
+            heightInput.disabled = true;
+
+            drawBars();
+            updateInfoPanel('准备开始。点击 "下一步" 执行第一次计算。');
+            explanationText.textContent = '我们从最宽的容器开始，一个指针在最左边，一个在最右边。';
+            water.style.display = 'none';
+        }
+        
+        function drawBars() {
+            chart.innerHTML = '';
+            barElements = [];
+            const maxH = Math.max(...heights, 1);
+            
+            heights.forEach((h, index) => {
+                const barContainer = document.createElement('div');
+                barContainer.className = 'flex-grow h-full flex flex-col-reverse items-center relative';
+
+                const bar = document.createElement('div');
+                bar.className = 'bar w-3/4 bg-gray-300 rounded-t-md';
+                bar.style.height = `${(h / maxH) * 100}%`;
+                
+                const label = document.createElement('span');
+                label.className = 'absolute -bottom-6 text-xs font-medium text-gray-500';
+                label.textContent = h;
+
+                barContainer.appendChild(bar);
+                barContainer.appendChild(label);
+                chart.appendChild(barContainer);
+                barElements.push(bar);
+            });
+        }
+
+        function runStep() {
+            if (left >= right) {
+                explanationText.textContent = `算法结束！找到的最大面积是 ${maxArea}。点击“重置”以尝试新的数组。`;
+                stepBtn.disabled = true;
+                return;
+            }
+            
+            step++;
+            
+            const h_left = heights[left];
+            const h_right = heights[right];
+            const currentHeight = Math.min(h_left, h_right);
+            const currentWidth = right - left;
+            const currentArea = currentHeight * currentWidth;
+            
+            let movedLeft = false;
+            let explanation = '';
+
+            if (h_left < h_right) {
+                explanation = `左边柱子 (${h_left}) 比右边 (${h_right}) 矮，所以向右移动左指针，寻找可能更高的左边界。`;
+                movedLeft = true;
+            } else {
+                explanation = `右边柱子 (${h_right}) 不比左边 (${h_left}) 高，所以向左移动右指针，寻找可能更高的右边界。`;
+            }
+            
+            if (currentArea > maxArea) {
+                maxArea = currentArea;
+                explanation += ` 新的面积 ${currentArea} 大于之前的最大面积，更新最大值！`;
+            } else {
+                 explanation += ` 当前面积 ${currentArea} 没有超过最大面积 ${maxArea}。`;
+            }
+
+            updateVisualization(currentHeight, currentWidth);
+            updateInfoPanel(null, currentArea);
+            explanationText.textContent = explanation;
+
+            if (movedLeft) {
+                left++;
+            } else {
+                right--;
+            }
+        }
+
+        function updateVisualization(currentHeight, currentWidth) {
+            const maxH = Math.max(...heights, 1);
+            
+            barElements.forEach(bar => bar.style.backgroundColor = '#d1d5db');
+
+            barElements[left].style.backgroundColor = '#ef4444'; 
+            barElements[right].style.backgroundColor = '#10b981';
+            
+            const barWidth = chart.clientWidth / heights.length;
+            water.style.display = 'block';
+            water.style.height = `${(currentHeight / maxH) * 100}%`;
+            water.style.width = `${currentWidth * barWidth}px`;
+            water.style.left = `${left * barWidth + barWidth/2}px`;
+        }
+
+        function updateInfoPanel(message = null, currentArea = null) {
+            if (message) {
+                infoPanel.innerHTML = `<p>${message}</p>`;
+                return;
+            }
+
+            infoPanel.innerHTML = `
+                <div class="space-y-4">
+                    <p class="font-semibold">第 ${step} 步</p>
+                    <div class="flex justify-between items-center p-3 rounded-lg bg-red-100 border border-red-200 info-box">
+                        <span>左指针 (L):</span>
+                        <span class="font-bold">[${left}] = ${heights[left]}</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 rounded-lg bg-emerald-100 border border-emerald-200 info-box">
+                        <span>右指针 (R):</span>
+                        <span class="font-bold">[${right}] = ${heights[right]}</span>
+                    </div>
+                    <div class="border-t pt-4 mt-4">
+                        <p>宽度: <span class="font-mono">${right} - ${left} = ${right - left}</span></p>
+                        <p>高度: <span class="font-mono">min(${heights[left]}, ${heights[right]}) = ${Math.min(heights[left], heights[right])}</span></p>
+                        <p>当前面积: <span class="font-mono font-bold text-blue-600">${currentArea}</span></p>
+                    </div>
+                    <div class="border-t pt-4 mt-4">
+                        <p class="text-lg font-bold">最大面积: <span class="font-mono text-green-600">${maxArea}</span></p>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态可视化讲解：接雨水问题</title>
+    
+    <!-- KaTeX for LaTeX Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #1d1d1f;
+            --primary-color: #0071e3;
+            --secondary-color: #6e6e73;
+            --border-color: #d2d2d7;
+            --card-bg: #ffffff;
+            --water-color: rgba(0, 113, 227, 0.6);
+            --highlight-color-1: rgba(214, 40, 40, 0.8);
+            --highlight-color-2: rgba(253, 126, 20, 0.9);
+            --code-bg: #2d2d2d;
+            --code-text: #f5f5f7;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --border-radius: 18px;
+            --transition-speed: 0.4s;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2em;
+            line-height: 1.65;
+            font-size: 17px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        h1, h2, h3 {
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: -0.2px;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.6rem;
+            margin-bottom: 1.2rem;
+        }
+        
+        h3 {
+            font-size: 1.3rem;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem 2.5rem;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.07);
+            transition: box-shadow var(--transition-speed);
+        }
+
+        .input-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .input-section label {
+            font-weight: 500;
+        }
+
+        #height-input {
+            flex-grow: 1;
+            padding: 0.8rem 1.2rem;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-family: var(--font-family);
+            font-size: 1rem;
+            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        #height-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2);
+        }
+        
+        .btn, .tab-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.8rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color var(--transition-speed), transform var(--transition-speed);
+            outline: none;
+        }
+        
+        .btn:hover, .tab-btn:hover {
+            background-color: #0077ed;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active, .tab-btn:active {
+            transform: translateY(0);
+        }
+        
+        .control-btn {
+             background-color: var(--card-bg);
+             color: var(--primary-color);
+             border: 2px solid var(--primary-color);
+             font-weight: 600;
+        }
+
+        .control-btn:hover {
+             background-color: rgba(0, 113, 227, 0.05);
+        }
+        
+        .control-btn:disabled {
+            background-color: var(--border-color);
+            border-color: var(--border-color);
+            color: var(--secondary-color);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .tab-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+        
+        .tab-btn {
+            background-color: transparent;
+            color: var(--secondary-color);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
+        }
+        
+        .visualization-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            border-bottom: 2px solid var(--text-color);
+            margin-bottom: 1rem;
+            padding-bottom: 10px;
+        }
+        
+        .bar-wrapper {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            height: 100%;
+            position: relative;
+        }
+        
+        .bar {
+            background-color: var(--text-color);
+            border: 1px solid var(--bg-color);
+            box-sizing: border-box;
+            transition: background-color var(--transition-speed), height var(--transition-speed);
+            position: relative;
+            z-index: 2;
+            border-radius: 2px 2px 0 0;
+        }
+        
+        .water {
+            position: absolute;
+            bottom: 0;
+            background-color: var(--water-color);
+            transition: height var(--transition-speed) ease-in-out;
+            z-index: 1;
+            border-radius: 2px 2px 0 0;
+        }
+        
+        .bar-label {
+            position: absolute;
+            bottom: -30px;
+            font-size: 0.8em;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+        
+        .pointer {
+            position: absolute;
+            bottom: -60px;
+            font-size: 1.8em;
+            transition: left var(--transition-speed) ease-in-out;
+            z-index: 5;
+            transform: translateX(-50%);
+        }
+        
+        #left-pointer { color: var(--highlight-color-1); }
+        #right-pointer { color: var(--highlight-color-2); }
+        
+        .max-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-top: 2px dashed;
+            z-index: 3;
+            transition: bottom var(--transition-speed), border-color var(--transition-speed);
+            opacity: 0.8;
+        }
+
+        #left-max-line { border-color: var(--highlight-color-1); }
+        #right-max-line { border-color: var(--highlight-color-2); }
+        
+        .status-panel {
+            min-height: 80px;
+            padding: 1.2rem 1.5rem;
+            background-color: var(--bg-color);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-text {
+            font-size: 1.05rem;
+            color: var(--text-color);
+            font-weight: 500;
+            min-height: 28px;
+        }
+        
+        .variable-display {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 0.8rem;
+            font-size: 0.95rem;
+            color: var(--secondary-color);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .algo-explanation {
+            display: none;
+        }
+        
+        .algo-explanation.active {
+            display: block;
+        }
+        
+        code {
+            font-family: "SF Mono", "Fira Code", "Source Code Pro", monospace;
+            background-color: rgba(0,0,0,0.06);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>动态可视化讲解：接雨水</h1>
+        </header>
+
+        <main>
+            <div class="card">
+                <h2>问题描述</h2>
+                <p>给定 $n$ 个非负整数表示每个宽度为 $1$ 的柱子的高度图，计算按此排列的柱子，下雨之后能接多少雨水。</p>
+                <div class="input-section">
+                    <label for="height-input">输入高度数组 (逗号分隔):</label>
+                    <input type="text" id="height-input" value="0,1,0,2,1,0,1,3,2,1,2,1">
+                    <button id="visualize-btn" class="btn">生成可视化</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>算法可视化</h2>
+                <div class="tab-container">
+                    <button class="tab-btn active" data-algo="dp">动态规划</button>
+                    <button class="tab-btn" data-algo="two-pointers">双指针</button>
+                </div>
+                
+                <div id="visualization-container" class="visualization-container">
+                   <!-- Bars and water will be generated here by JS -->
+                </div>
+
+                <div class="status-panel">
+                    <p id="status-text" class="status-text">点击 "生成可视化" 开始。</p>
+                    <div id="variable-display" class="variable-display">
+                        <!-- Variable display will be populated here -->
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button id="prev-step-btn" class="btn control-btn" disabled>上一步</button>
+                    <button id="play-pause-btn" class="btn control-btn" disabled>播放</button>
+                    <button id="next-step-btn" class="btn control-btn" disabled>下一步</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>算法讲解</h2>
+                <div id="dp-explanation" class="algo-explanation active">
+                    <h3>解法一：动态规划 (Dynamic Programming)</h3>
+                    <p>动态规划的核心思想是“空间换时间”。我们发现，对于每个柱子 $i$，计算其能接的雨水量 $W_i = \min(\text{左侧最高}, \text{右侧最高}) - \text{height}[i]$ 时，需要重复遍历其左侧和右侧来寻找最高点。这是非常低效的。</p>
+                    <p>我们可以创建两个数组，<code>left_max</code> 和 <code>right_max</code>，来预先计算并存储这些信息。</p>
+                    <ol>
+                        <li><strong><code>left_max[i]</code></strong>: 存储从索引 $0$ 到 $i$ 的所有柱子中的最高高度。这个数组可以从左到右一次遍历生成：$ \text{left\_max}[i] = \max(\text{left\_max}[i-1], \text{height}[i]) $。</li>
+                        <li><strong><code>right_max[i]</code></strong>: 存储从索引 $i$ 到 $n-1$ 的所有柱子中的最高高度。这个数组可以从右到左一次遍历生成：$ \text{right\_max}[i] = \max(\text{right\_max}[i+1], \text{height}[i]) $。</li>
+                        <li>有了这两个数组后，我们再遍历一次所有柱子，对于每个位置 $i$，其能容纳的雨水量就是 $ \min(\text{left\_max}[i], \text{right\_max}[i]) - \text{height}[i] $。将所有位置的雨水量累加，即为最终结果。</li>
+                    </ol>
+                    <p><b>时间复杂度:</b> $O(N)$，因为我们进行了三次独立的线性遍历。</p>
+                    <p><b>空间复杂度:</b> $O(N)$，因为我们使用了两个额外的数组来存储左右最大值。</p>
+                    <pre><code class="language-python"># Dynamic Programming Solution
+def trap(height: list[int]) -> int:
+    if not height:
+        return 0
+    n = len(height)
+    
+    left_max = [0] * n
+    left_max[0] = height[0]
+    for i in range(1, n):
+        left_max[i] = max(left_max[i-1], height[i])
+
+    right_max = [0] * n
+    right_max[n-1] = height[n-1]
+    for i in range(n - 2, -1, -1):
+        right_max[i] = max(right_max[i+1], height[i])
+
+    total_water = 0
+    for i in range(n):
+        water_at_i = min(left_max[i], right_max[i]) - height[i]
+        if water_at_i > 0:
+            total_water += water_at_i
+            
+    return total_water
+</code></pre>
+                </div>
+                
+                <div id="two-pointers-explanation" class="algo-explanation">
+                    <h3>解法二：双指针 (Two Pointers)</h3>
+                    <p>双指针法是动态规划解法的一种空间优化。我们注意到，在计算动态规划的 $ \min(\text{left\_max}[i], \text{right\_max}[i]) $ 时，实际上我们并不需要知道“全局”的左右最高点，只需要知道“至今为止”的最高点。</p>
+                    <p>我们可以使用两个指针，<code>left</code> 从数组开头，<code>right</code> 从数组末尾，同时向中间移动。</p>
+                    <ol>
+                        <li>初始化 <code>left = 0</code>, <code>right = n-1</code>，以及两个变量 <code>left_max = 0</code> 和 <code>right_max = 0</code> 用于记录至今为止从左和从右遇到的最高柱子。</li>
+                        <li>在一个循环中，比较 <code>height[left]</code> 和 <code>height[right]</code>：
+                            <ul>
+                                <li>如果 $ \text{height}[\text{left}] < \text{height}[\text{right}] $，这意味着对于 <code>left</code> 指针所在的位置，它的右侧最高墙（至少是 <code>height[right]</code>）肯定比左侧至今遇到的最高墙 <code>left_max</code> 要高。因此，此处能接的雨水量由 <code>left_max</code> 决定。我们计算 $ \text{left\_max} - \text{height}[\text{left}] $ 的水量（如果为正），并累加到总数中。然后更新 <code>left_max</code>，并将 <code>left</code> 指针右移。</li>
+                                <li>反之，如果 $ \text{height}[\text{left}] \ge \text{height}[\text{right}] $，我们对 <code>right</code> 指针做类似的处理。其水量由 <code>right_max</code> 决定。计算、累加、更新 <code>right_max</code>，并将 <code>right</code> 指针左移。</li>
+                            </ul>
+                        </li>
+                        <li>当 <code>left</code> 和 <code>right</code> 指针相遇时，循环结束，我们便得到了总的雨水量。</li>
+                    </ol>
+                    <p><b>时间复杂度:</b> $O(N)$，因为两个指针总共只会遍历数组一次。</p>
+                    <p><b>空间复杂度:</b> $O(1)$，我们只使用了常数个额外变量。</p>
+                    <pre><code class="language-python"># Two Pointers Solution
+def trap(height: list[int]) -> int:
+    if not height:
+        return 0
+    
+    left, right = 0, len(height) - 1
+    left_max, right_max = 0, 0
+    total_water = 0
+
+    while left < right:
+        if height[left] < height[right]:
+            if height[left] >= left_max:
+                left_max = height[left]
+            else:
+                total_water += left_max - height[left]
+            left += 1
+        else:
+            if height[right] >= right_max:
+                right_max = height[right]
+            else:
+                total_water += right_max - height[right]
+            right -= 1
+            
+    return total_water
+</code></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const heightInput = document.getElementById('height-input');
+        const visualizeBtn = document.getElementById('visualize-btn');
+        const visContainer = document.getElementById('visualization-container');
+        const statusText = document.getElementById('status-text');
+        const varDisplay = document.getElementById('variable-display');
+        
+        const prevBtn = document.getElementById('prev-step-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const nextBtn = document.getElementById('next-step-btn');
+        
+        const tabs = document.querySelectorAll('.tab-btn');
+        const explanations = document.querySelectorAll('.algo-explanation');
+
+        // --- State ---
+        let height = [];
+        let max_h = 0;
+        let steps = [];
+        let currentStep = -1;
+        let currentAlgo = 'dp';
+        let isPlaying = false;
+        let playInterval = null;
+        let waterFilled = [];
+        
+        // --- Constants ---
+        const BAR_WIDTH_PERCENT = 80;
+
+        // --- Core Logic ---
+        function parseInput() {
+            const rawInput = heightInput.value.trim();
+            if (rawInput === '') return [];
+            
+            try {
+                if (rawInput.startsWith('[') && rawInput.endsWith(']')) {
+                    const parsed = JSON.parse(rawInput);
+                    if (Array.isArray(parsed) && parsed.every(n => typeof n === 'number' && n >= 0)) {
+                        return parsed;
+                    }
+                }
+            } catch (e) { /* Fall through to CSV parsing */ }
+
+            const parsed = rawInput.split(',')
+                .map(s => s.trim())
+                .filter(Boolean)
+                .map(Number);
+            
+            if (parsed.every(n => !isNaN(n) && n >= 0)) {
+                return parsed;
+            }
+            
+            return null;
+        }
+
+        function createVisualization() {
+            height = parseInput();
+            if (!height) {
+                alert('请输入有效的数组，例如 "4,2,0,3,2,5" 或 "[4,2,0,3,2,5]"');
+                return;
+            }
+            
+            resetAnimation();
+            max_h = Math.max(...height, 1);
+            visContainer.innerHTML = '';
+
+            const barContainerWidth = 100 / height.length;
+
+            height.forEach((h, i) => {
+                const barWrapper = document.createElement('div');
+                barWrapper.className = 'bar-wrapper';
+                barWrapper.style.width = `${barContainerWidth}%`;
+                
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.id = `bar-${i}`;
+                bar.style.width = `${BAR_WIDTH_PERCENT}%`;
+                bar.style.height = `${(h / max_h) * 100}%`;
+
+                const water = document.createElement('div');
+                water.className = 'water';
+                water.id = `water-${i}`;
+                water.style.width = `${BAR_WIDTH_PERCENT}%`;
+                water.style.height = '0%';
+                
+                const label = document.createElement('div');
+                label.className = 'bar-label';
+                label.innerText = h;
+
+                barWrapper.appendChild(bar);
+                barWrapper.appendChild(water);
+                barWrapper.appendChild(label);
+                visContainer.appendChild(barWrapper);
+            });
+            
+            generateSteps();
+            if (steps.length > 0) {
+                currentStep = 0;
+                renderStep(currentStep);
+            }
+            updateControls();
+            renderAllMath();
+        }
+        
+        function generateSteps() {
+            steps = [];
+            waterFilled = new Array(height.length).fill(0);
+            if (currentAlgo === 'dp') {
+                generateDpSteps();
+            } else if (currentAlgo === 'two-pointers') {
+                generateTwoPointersSteps();
+            }
+        }
+
+        // --- DP Steps Generation ---
+        function generateDpSteps() {
+            if (!height || height.length < 3) {
+                steps.push({ text: "数组长度不足，无法储水。", vars: { "总水量": 0 } });
+                return;
+            }
+            const n = height.length;
+            const left_max_arr = new Array(n).fill(0);
+            const right_max_arr = new Array(n).fill(0);
+            let total_water = 0;
+
+            steps.push({
+                phase: 'start-dp',
+                text: "开始动态规划解法。首先，从左到右计算每个位置左侧的最高柱子（包含自身）。",
+                vars: { "状态": "计算 left_max 数组" }
+            });
+            
+            left_max_arr[0] = height[0];
+            steps.push({
+                phase: 'calc-left',
+                text: `初始化 <code>left_max[0]</code> 为 <code>height[0]</code>，即 ${height[0]}。`,
+                highlight: [0],
+                left_max: [...left_max_arr],
+                vars: { "i": 0, "left_max[0]": left_max_arr[0] }
+            });
+
+            for (let i = 1; i < n; i++) {
+                left_max_arr[i] = Math.max(left_max_arr[i-1], height[i]);
+                steps.push({
+                    phase: 'calc-left',
+                    text: `计算 <code>left_max[${i}]</code> = max(<code>left_max[${i-1}]</code>, <code>height[${i}]</code>) = max(${left_max_arr[i-1]}, ${height[i]}) = ${left_max_arr[i]}。`,
+                    highlight: [i],
+                    left_max: [...left_max_arr],
+                    vars: { "i": i, [`left_max[${i}]`]: left_max_arr[i] }
+                });
+            }
+            
+            steps.push({
+                phase: 'start-right',
+                text: "<code>left_max</code> 数组计算完毕。现在，从右向左计算右侧最高柱子。",
+                left_max: [...left_max_arr],
+                vars: { "状态": "计算 right_max 数组" }
+            });
+            
+            right_max_arr[n-1] = height[n-1];
+            steps.push({
+                phase: 'calc-right',
+                text: `初始化 <code>right_max[${n-1}]</code> 为 <code>height[${n-1}]</code>，即 ${height[n-1]}。`,
+                highlight: [n-1],
+                left_max: [...left_max_arr],
+                right_max: [...right_max_arr],
+                vars: { "i": n-1, [`right_max[${n-1}]`]: right_max_arr[n-1] }
+            });
+
+            for (let i = n - 2; i >= 0; i--) {
+                right_max_arr[i] = Math.max(right_max_arr[i+1], height[i]);
+                steps.push({
+                    phase: 'calc-right',
+                    text: `计算 <code>right_max[${i}]</code> = max(<code>right_max[${i+1}]</code>, <code>height[${i}]</code>) = max(${right_max_arr[i+1]}, ${height[i]}) = ${right_max_arr[i]}。`,
+                    highlight: [i],
+                    left_max: [...left_max_arr],
+                    right_max: [...right_max_arr],
+                    vars: { "i": i, [`right_max[${i}]`]: right_max_arr[i] }
+                });
+            }
+
+            steps.push({
+                phase: 'start-water',
+                text: "预计算完成。现在遍历每个柱子，根据 $W_i = \\min(L_{max}[i], R_{max}[i]) - H[i]$ 计算储水量。",
+                left_max: [...left_max_arr],
+                right_max: [...right_max_arr],
+                vars: { "状态": "计算总储水量", "总水量": total_water }
+            });
+            
+            const final_water_heights = new Array(n).fill(0);
+            for (let i = 0; i < n; i++) {
+                const water_level = Math.min(left_max_arr[i], right_max_arr[i]);
+                const water_at_i = water_level - height[i];
+                if (water_at_i > 0) {
+                    total_water += water_at_i;
+                    final_water_heights[i] = water_at_i;
+                }
+                steps.push({
+                    phase: 'calc-water',
+                    text: `在位置 ${i}，储水边界为 min(${left_max_arr[i]}, ${right_max_arr[i]}) = ${water_level}。储水量为 ${water_level} - ${height[i]} = ${water_at_i > 0 ? water_at_i : 0}。`,
+                    highlight: [i],
+                    left_max: [...left_max_arr],
+                    right_max: [...right_max_arr],
+                    water_heights: [...final_water_heights],
+                    vars: { "i": i, "储水边界": water_level, "当前储水量": (water_at_i > 0 ? water_at_i : 0), "总水量": total_water }
+                });
+            }
+            
+            steps.push({
+                phase: 'end',
+                text: `计算完成！总共可以接到 ${total_water} 个单位的雨水。`,
+                water_heights: [...final_water_heights],
+                vars: { "最终总水量": total_water }
+            });
+        }
+        
+        // --- Two Pointers Steps Generation (FIXED) ---
+        function generateTwoPointersSteps() {
+            if (!height || height.length < 3) {
+                steps.push({ phase: 'end', text: "数组长度不足，无法储水。", vars: { "总水量": 0 } });
+                return;
+            }
+            
+            const leftPointer = document.createElement('div');
+            leftPointer.className = 'pointer';
+            leftPointer.id = 'left-pointer';
+            leftPointer.innerHTML = '&#9650;';
+            visContainer.appendChild(leftPointer);
+
+            const rightPointer = document.createElement('div');
+            rightPointer.className = 'pointer';
+            rightPointer.id = 'right-pointer';
+            rightPointer.innerHTML = '&#9650;';
+            visContainer.appendChild(rightPointer);
+            
+            const leftMaxLine = document.createElement('div');
+            leftMaxLine.className = 'max-line';
+            leftMaxLine.id = 'left-max-line';
+            visContainer.appendChild(leftMaxLine);
+            
+            const rightMaxLine = document.createElement('div');
+            rightMaxLine.className = 'max-line';
+            rightMaxLine.id = 'right-max-line';
+            visContainer.appendChild(rightMaxLine);
+
+            const n = height.length;
+            let left = 0, right = n - 1;
+            let left_max = 0, right_max = 0;
+            let total_water = 0;
+
+            steps.push({
+                phase: 'start-tp',
+                text: "开始双指针解法。初始化 <code>left</code> 在最左，<code>right</code> 在最右。",
+                left, right, left_max, right_max, total_water,
+                water_filled: [...waterFilled],
+                vars: { "left": 0, "right": n-1, "left_max": 0, "right_max": 0, "总水量": 0 }
+            });
+
+            while (left < right) {
+                let text;
+                let water_added_amount = 0;
+                let water_added_index = -1;
+
+                if (height[left] < height[right]) {
+                    text = `比较 $H[${left}] (${height[left]}) < H[${right}] (${height[right]})$，成立。处理左指针。`;
+                    
+                    steps.push({
+                       phase: 'loop-tp',
+                       text, 
+                       left, right, 
+                       left_max, right_max, total_water,
+                       water_filled: [...waterFilled],
+                       vars: { "left": left, "right": right, "left_max": left_max, "right_max": right_max, "总水量": total_water }
+                    });
+
+                    if (height[left] >= left_max) {
+                        left_max = height[left];
+                        text += ` $H[${left}] \\ge$ <code>left_max</code>，更新 <code>left_max</code> 为 ${left_max}。不储水。`;
+                    } else {
+                        water_added_amount = left_max - height[left];
+                        water_added_index = left;
+                        total_water += water_added_amount;
+                        text += ` $H[${left}] <$ <code>left_max</code> (${left_max})，储水 ${water_added_amount}。总水量变为 ${total_water}。`;
+                    }
+                    
+                    if (water_added_index !== -1) {
+                        waterFilled[water_added_index] = water_added_amount;
+                    }
+                    
+                    left++;
+                } else {
+                    text = `比较 $H[${left}] (${height[left]}) < H[${right}] (${height[right]})$，不成立。处理右指针。`;
+                    
+                    steps.push({
+                       phase: 'loop-tp',
+                       text, 
+                       left, right,
+                       left_max, right_max, total_water,
+                       water_filled: [...waterFilled],
+                       vars: { "left": left, "right": right, "left_max": left_max, "right_max": right_max, "总水量": total_water }
+                    });
+
+                    if (height[right] >= right_max) {
+                        right_max = height[right];
+                        text += ` $H[${right}] \\ge$ <code>right_max</code>，更新 <code>right_max</code> 为 ${right_max}。不储水。`;
+                    } else {
+                        water_added_amount = right_max - height[right];
+                        water_added_index = right;
+                        total_water += water_added_amount;
+                        text += ` $H[${right}] <$ <code>right_max</code> (${right_max})，储水 ${water_added_amount}。总水量变为 ${total_water}。`;
+                    }
+
+                    if (water_added_index !== -1) {
+                        waterFilled[water_added_index] = water_added_amount;
+                    }
+                    
+                    right--;
+                }
+            }
+            
+             steps.push({
+                phase: 'end',
+                text: `指针相遇 (<code>left</code>=${left}, <code>right</code>=${right})，循环结束。总共接到 ${total_water} 个单位的雨水。`,
+                left, right, left_max, right_max, total_water,
+                water_filled: [...waterFilled],
+                vars: { "最终总水量": total_water }
+            });
+        }
+        
+        // --- Rendering ---
+        function renderStep(stepIndex) {
+            if (stepIndex < 0 || stepIndex >= steps.length) return;
+            const step = steps[stepIndex];
+            
+            statusText.innerHTML = step.text;
+            let varHtml = '';
+            if (step.vars) {
+                for (const key in step.vars) {
+                    varHtml += `<span>${key}: <strong>${step.vars[key]}</strong></span>`;
+                }
+            }
+            varDisplay.innerHTML = varHtml;
+
+            for (let i = 0; i < height.length; i++) {
+                 const bar = document.getElementById(`bar-${i}`);
+                 if (bar) bar.style.backgroundColor = 'var(--text-color)';
+            }
+            
+            if (currentAlgo === 'dp') {
+                renderDpStep(step);
+            } else if (currentAlgo === 'two-pointers') {
+                renderTwoPointersStep(step);
+            }
+            renderAllMath();
+        }
+        
+        function renderDpStep(step) {
+            if (step.highlight) {
+                step.highlight.forEach(i => {
+                    const bar = document.getElementById(`bar-${i}`);
+                    if (bar) bar.style.backgroundColor = 'var(--primary-color)';
+                });
+            }
+            
+            for (let i = 0; i < height.length; i++) {
+                const waterEl = document.getElementById(`water-${i}`);
+                if (!waterEl) continue;
+                
+                const waterAboveBar = (step.water_heights && step.water_heights[i] > 0) ? step.water_heights[i] : 0;
+                const waterLevel = height[i] + waterAboveBar;
+                
+                waterEl.style.height = `${(waterLevel / max_h) * 100}%`;
+                waterEl.style.bottom = '0';
+            }
+        }
+        
+        function renderTwoPointersStep(step) {
+            const barContainerWidth = 100 / height.length;
+            const leftPointer = document.getElementById('left-pointer');
+            const rightPointer = document.getElementById('right-pointer');
+            const leftMaxLine = document.getElementById('left-max-line');
+            const rightMaxLine = document.getElementById('right-max-line');
+            
+            if (!leftPointer) return;
+
+            leftPointer.style.left = `${step.left * barContainerWidth + barContainerWidth / 2}%`;
+            rightPointer.style.left = `${step.right * barContainerWidth + barContainerWidth / 2}%`;
+            
+            leftMaxLine.style.bottom = `${(step.left_max / max_h) * 100}%`;
+            leftMaxLine.style.display = step.left_max > 0 ? 'block' : 'none';
+            rightMaxLine.style.bottom = `${(step.right_max / max_h) * 100}%`;
+            rightMaxLine.style.display = step.right_max > 0 ? 'block' : 'none';
+            
+            if (step.left < height.length) {
+                const bar = document.getElementById(`bar-${step.left}`);
+                if (bar) bar.style.backgroundColor = 'var(--highlight-color-1)';
+            }
+            if (step.right >= 0) {
+                const bar = document.getElementById(`bar-${step.right}`);
+                if (bar) bar.style.backgroundColor = 'var(--highlight-color-2)';
+            }
+            
+            if (step.water_filled) {
+                for(let i = 0; i < height.length; i++) {
+                    const waterEl = document.getElementById(`water-${i}`);
+                    if (!waterEl) continue;
+                    const waterAboveBar = step.water_filled[i] || 0;
+                    const waterLevel = height[i] + waterAboveBar;
+                    waterEl.style.height = `${(waterLevel / max_h) * 100}%`;
+                    waterEl.style.bottom = '0';
+                }
+            }
+        }
+        
+        function renderAllMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        // --- Controls ---
+        function updateControls() {
+            prevBtn.disabled = currentStep <= 0;
+            nextBtn.disabled = currentStep >= steps.length - 1;
+            playPauseBtn.disabled = steps.length === 0 || currentStep >= steps.length - 1;
+            playPauseBtn.textContent = isPlaying ? '暂停' : '播放';
+        }
+
+        function handleNext() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                renderStep(currentStep);
+                updateControls();
+            }
+            if (currentStep >= steps.length - 1) {
+                handlePause();
+            }
+        }
+
+        function handlePrev() {
+            if (currentStep > 0) {
+                currentStep--;
+                renderStep(currentStep);
+                updateControls();
+            }
+        }
+        
+        function handlePlayPause() {
+            if (isPlaying) {
+                handlePause();
+            } else {
+                handlePlay();
+            }
+        }
+
+        function handlePlay() {
+            if (currentStep >= steps.length - 1) {
+                currentStep = -1;
+                resetVisualizationState();
+            }
+            isPlaying = true;
+            playInterval = setInterval(handleNext, 1200);
+            playPauseBtn.textContent = '暂停';
+            updateControls();
+        }
+
+        function handlePause() {
+            isPlaying = false;
+            clearInterval(playInterval);
+            playInterval = null;
+            updateControls();
+        }
+        
+        function resetVisualizationState() {
+             for (let i = 0; i < height.length; i++) {
+                const waterEl = document.getElementById(`water-${i}`);
+                if (waterEl) waterEl.style.height = '0%';
+             }
+        }
+
+        function resetAnimation() {
+            handlePause();
+            steps = [];
+            currentStep = -1;
+            statusText.innerHTML = '点击 "生成可视化" 开始。';
+            varDisplay.innerHTML = '';
+            updateControls();
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            playPauseBtn.disabled = true;
+        }
+
+        // --- Event Listeners ---
+        visualizeBtn.addEventListener('click', createVisualization);
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const selectedAlgo = tab.dataset.algo;
+                if(selectedAlgo === currentAlgo) return;
+
+                currentAlgo = selectedAlgo;
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                explanations.forEach(exp => exp.classList.remove('active'));
+                document.getElementById(`${currentAlgo}-explanation`).classList.add('active');
+
+                createVisualization();
+            });
+        });
+        
+        nextBtn.addEventListener('click', handleNext);
+        prevBtn.addEventListener('click', handlePrev);
+        playPauseBtn.addEventListener('click', handlePlayPause);
+
+        // --- Initial Load ---
+        createVisualization();
+    });
+    </script>
+
+</body>
+</html>

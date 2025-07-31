@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODEI/O: 通过代码输入输出预测凝聚推理模式</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        // 配置 MathJax 以支持 LaTeX 渲染
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #f9fafb; /* Lighter gray for a softer feel */
+            color: #1f2937;
+        }
+        .apple-header {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .content-section {
+            padding-top: 4rem;
+            padding-bottom: 4rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #111827;
+            letter-spacing: -0.025em;
+        }
+        .section-subtitle {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #4b5563;
+            margin-bottom: 2.5rem;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* More rounded corners */
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.1);
+        }
+        .code-block {
+            background-color: #1f2937;
+            color: #d1d5db;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            overflow-x: auto;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+        }
+        .latex-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .latex-table th, .latex-table td {
+            border: 1px solid #d1d5db;
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+        .latex-table th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
+        .pill {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background-color: #e5e7eb;
+            color: #374151;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        mjx-container {
+            display: inline-block !important;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header -->
+    <header id="header" class="sticky top-0 z-50 apple-header">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">CODEI/O 论文解析</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#motivation" class="text-gray-600 hover:text-black transition">研究动机</a>
+                <a href="#pipeline" class="text-gray-600 hover:text-black transition">构建流程</a>
+                <a href="#modeling" class="text-gray-600 hover:text-black transition">核心方法</a>
+                <a href="#experiments" class="text-gray-600 hover:text-black transition">实验</a>
+                <a href="#results" class="text-gray-600 hover:text-black transition">结果与结论</a>
+                <a href="#review" class="text-gray-600 hover:text-black transition">Reviewer 点评</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Hero Section -->
+        <section class="text-center py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <h1 class="text-5xl md:text-6xl font-extrabold text-gray-900 leading-tight">
+                    CODEI/O
+                </h1>
+                <p class="mt-4 text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
+                    通过代码输入/输出预测，系统性地凝聚并提炼多样的推理模式，从而提升大语言模型的通用推理能力。
+                </p>
+                <p class="mt-2 text-sm text-gray-500">
+                    Junlong Li, Daya Guo, Dejian Yang, Runxin Xu, Yu Wu, Junxian He
+                </p>
+            </div>
+        </section>
+
+        <!-- Research Motivation -->
+        <section id="motivation" class="content-section bg-gray-50">
+            <div class="container mx-auto px-6">
+                <h2 class="section-title">研究动机</h2>
+                <p class="section-subtitle">当前大模型推理能力提升所面临的核心困境，以及 CODEI/O 为何是一个有效的解决方案。</p>
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div class="card">
+                        <h3 class="text-2xl font-bold mb-4">发现的问题：推理数据稀疏且割裂</h3>
+                        <p class="text-gray-600 leading-relaxed">
+                            虽然大语言模型（LLMs）在数学和代码生成等任务上表现出色，因为这些领域有大量结构化的训练数据。然而，对于更广泛的推理任务，如逻辑推演、科学推理和符号推理，高质量的训练数据既稀疏又零散。这极大地限制了模型通用推理能力的提升。
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-2xl font-bold mb-4">解决方案：从代码中凝聚推理模式</h3>
+                        <p class="text-gray-600 leading-relaxed">
+                            本文认为，真实世界的代码是各种推理模式的“富矿”。代码本身就蕴含了逻辑流规划、状态空间搜索、递归分解和决策制定等通用的推理“原语”。直接用原始代码预训练效果不佳，因为推理信号与语法噪音混杂。因此，作者提出了一种创新的方法：<strong>CODEI/O</strong>。
+                        </p>
+                    </div>
+                    <div class="col-span-2 card mt-8">
+                        <h3 class="text-2xl font-bold mb-4 text-center">本文的 Significance</h3>
+                        <p class="text-gray-600 leading-relaxed text-center max-w-4xl mx-auto">
+                            CODEI/O 的核心思想是，将代码文件转化为一个更纯粹的“代码输入/输出预测”任务。模型不再需要生成具体的代码语法，而是以自然语言的思维链（Chain-of-Thought, CoT）形式，根据给定的代码和测试用例来预测输入或输出。这种方式有三大优势：
+                            <br><br>
+                            <strong>1. 解耦推理与语法：</strong> 将核心的逻辑推理过程从代码特有的语法中剥离出来，使其更易于泛化到非代码任务。
+                            <br>
+                            <strong>2. 保留逻辑严谨性：</strong> 代码的可执行性保证了推理过程的程序化严谨性。
+                            <br>
+                            <strong>3. 可扩展性强：</strong> 通过自动执行代码，可以轻松、大规模地生成高质量的（输入，输出）数据对和验证信号。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Pipeline -->
+        <section id="pipeline" class="content-section bg-white">
+            <div class="container mx-auto px-6">
+                <h2 class="section-title">数据构建流程</h2>
+                <p class="section-subtitle">从原始代码到最终训练样本的完整流程，揭示 CODEI/O 和 CODEI/O++ 数据集是如何被创造出来的。</p>
+                <div class="card mb-8">
+                    <h3 class="text-2xl font-bold mb-4 text-center">Figure 1: CODEI/O 数据构建流程概览</h3>
+                    <div class="flex justify-center">
+                         <img src="https://placehold.co/1200x400/e2e8f0/4a5568?text=Figure+1:+Overview+of+training+data+construction" alt="数据构建流程图" class="rounded-lg shadow-md">
+                    </div>
+                    <p class="mt-4 text-center text-gray-600">
+                        流程概览：从多源头收集原始代码，通过大模型（DeepSeek-V2.5）将其统一格式化，并生成输入生成器。然后，执行代码生成大量的 (输入, 输出) 对。最后，让大模型为这些预测任务生成自然语言的思维链（CoT）作为训练目标。对于预测错误的样本，可以通过多轮修正（Revision）来进一步提升数据质量，从而得到 CODEI/O++。
+                    </p>
+                </div>
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div class="card">
+                        <h4 class="font-bold text-xl mb-2">1. 收集原始代码</h4>
+                        <p class="text-gray-600">从多个来源收集了约 81万个代码文件，包括内部预训练语料库 CodeMix、侧重复杂推理的 PyEdu-R，以及算法库、数学题和在线编程平台等高质量来源，确保了推理模式的多样性。</p>
+                    </div>
+                    <div class="card">
+                        <h4 class="font-bold text-xl mb-2">2. 统一格式转换</h4>
+                        <p class="text-gray-600">使用 DeepSeek-V2.5 将杂乱的原始代码处理成统一、可执行的格式，包括：清理后的参考代码、主入口函数、输入/输出描述、独立的输入生成器（Input Generator）和自然语言问题描述（Query）。</p>
+                    </div>
+                    <div class="card">
+                        <h4 class="font-bold text-xl mb-2">3. 收集输入输出对</h4>
+                        <p class="text-gray-600">利用上一步生成的 Input Generator，为每个函数采样多个输入，并通过实际执行代码获得确定性的输出。经过过滤，最终从 45.5万个代码文件中获得了 350万个 (输入, 输出) 实例。</p>
+                    </div>
+                    <div class="card">
+                        <h4 class="font-bold text-xl mb-2">4. 构建训练样本</h4>
+                        <p class="text-gray-600">
+                            <strong>CODEI/O:</strong> 直接使用 DeepSeek-V2.5 为每个预测任务（预测输入或输出）生成 CoT 响应。
+                            <br><strong>CODEI/O++:</strong> 利用代码的可验证性。对于预测错误的 CoT，将错误反馈给模型，让其进行第二轮修正，并将整个修正过程（第一轮CoT + 反馈 + 第二轮CoT）作为新的训练目标，充分利用了执行反馈信号。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modeling -->
+        <section id="modeling" class="content-section bg-gray-50">
+            <div class="container mx-auto px-6">
+                <h2 class="section-title">核心方法与建模</h2>
+                <p class="section-subtitle">CODEI/O 的核心任务形式，以及模型需要学习的推理过程。</p>
+                <div class="card">
+                    <h3 class="text-2xl font-bold mb-4 text-center">Figure 2: 输入/输出预测任务示例</h3>
+                    <p class="text-center text-gray-600 mb-8">以下是一个“硬币找零”问题的示例，展示了两种预测任务：给定输入预测输出，以及给定输出预测输入。</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <!-- Left side: Predict Output -->
+                        <div class="border border-gray-200 rounded-xl p-6">
+                            <h4 class="font-bold text-xl mb-4">任务一：给定输入，预测输出</h4>
+                            <div class="mb-4">
+                                <p class="font-semibold">Query:</p>
+                                <p class="text-gray-700">给定金额 $\text{amt}$ 和硬币面额列表 $\text{coins}$，计算凑出该金额所需的最少硬币数。如果无法凑出，返回 $\infty$。</p>
+                            </div>
+                            <div class="mb-4">
+                                <p class="font-semibold">Reference Code:</p>
+                                <pre class="code-block text-sm"><code>def change_ref(amt, coins):
+    if amt < 0: return 0
+    if amt > 0 and not coins: return float("inf")
+    elif coins[0] > amt: return change_ref(amt, coins[1:])
+    else:
+        use_it = 1 + change_ref(amt - coins[0], coins)
+        lose_it = change_ref(amt, coins[1:])
+        return min(use_it, lose_it)</code></pre>
+                            </div>
+                            <div class="mb-4">
+                                <p class="font-semibold">Given Input:</p>
+                                <p class="text-gray-700">$\{\text{"amt": 25, "coins": [1,4,7]}\}$</p>
+                            </div>
+                            <div>
+                                <p class="font-semibold">Predicted Output (CoT):</p>
+                                <div class="text-gray-700 bg-gray-100 p-4 rounded-lg text-sm leading-relaxed">
+                                    1. <strong>贪心策略分析:</strong> ...贪心法不总是有效，需要考虑所有组合。<br>
+                                    2. <strong>组合可能性:</strong><br>
+                                    - 使用最大的硬币 7: 我们最多用3个7 ($3*7=21$)。剩下4，需要1个4。总共 $3+1=4$ 个硬币。<br>
+                                    - 使用2个7 ($2*7=14$)。剩下11，需要2个4和3个1。总共 $2+2+3=7$ 个硬币。<br>
+                                    - ...<br>
+                                    3. <strong>最优解:</strong> 比较所有组合，使用3个7和1个4的方案用的硬币最少，共4个。<br>
+                                    <code class="text-red-500 font-mono">{"output": 4}</code>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right side: Predict Input -->
+                        <div class="border border-gray-200 rounded-xl p-6">
+                            <h4 class="font-bold text-xl mb-4">任务二：给定输出，预测输入</h4>
+                             <div class="mb-4">
+                                <p class="font-semibold">Query:</p>
+                                <p class="text-gray-700">（同左）</p>
+                            </div>
+                            <div class="mb-4">
+                                <p class="font-semibold">Reference Code:</p>
+                                <p class="text-gray-700">（同左）</p>
+                            </div>
+                            <div class="mb-4">
+                                <p class="font-semibold">Given Output:</p>
+                                <p class="text-gray-700">$4$</p>
+                            </div>
+                            <div>
+                                <p class="font-semibold">Predicted Input (CoT):</p>
+                                <div class="text-gray-700 bg-gray-100 p-4 rounded-lg text-sm leading-relaxed">
+                                    1. <strong>目标:</strong> 我们需要找到一个输入，使得最少硬币数是4。<br>
+                                    2. <strong>反向推理:</strong> 这意味着我们需要构造一个金额 $\text{amt}$ 和一个硬币列表 $\text{coins}$，其最优解恰好是4个硬币。<br>
+                                    3. <strong>尝试1:</strong> 假设硬币是 $[1,2,5]$，金额是8。最优解是 $5+2+1$，共3个硬币。不满足。<br>
+                                    4. <strong>尝试2:</strong> 假设硬币是 $[1,3,4]$，金额是6。最优解是 $4+1+1$，共3个硬币。不满足。<br>
+                                    5. <strong>最终尝试:</strong> 让我们试试硬币 $[1,2,5]$ 和金额13。最优解是 $5+5+2+1$，共4个硬币。这满足了我们的要求。<br>
+                                    <code class="text-red-500 font-mono">{"input": {"amt": 13, "coins": [1, 2, 5]}}</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Experiments -->
+        <section id="experiments" class="content-section bg-white">
+            <div class="container mx-auto px-6">
+                <h2 class="section-title">实验方法与实验设计</h2>
+                <p class="section-subtitle">为了验证 CODEI/O 的有效性，论文进行了系统且全面的实验。</p>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="card col-span-1 lg:col-span-1">
+                        <h3 class="text-xl font-bold mb-3">基础模型 (Base Models)</h3>
+                        <p class="text-gray-600">实验选取了4个不同架构、尺寸和预训练重点的先进开源模型作为基座：</p>
+                        <ul class="list-disc list-inside mt-4 space-y-2">
+                            <li>Qwen 2.5 7B Coder</li>
+                            <li>Deepseek v2 Lite Coder (MoE)</li>
+                            <li>LLaMA 3.1 8B</li>
+                            <li>Gemma 2 27B</li>
+                        </ul>
+                    </div>
+                    <div class="card col-span-1 lg:col-span-2">
+                        <h3 class="text-xl font-bold mb-3">训练策略 (Training Setups)</h3>
+                        <p class="text-gray-600">采用两阶段训练策略：</p>
+                        <ol class="list-decimal list-inside mt-4 space-y-2">
+                            <li><strong>第一阶段 (中间训练):</strong> 在 CODEI/O 或 CODEI/O++ 数据集上进行训练，以增强模型的通用推理能力。</li>
+                            <li><strong>第二阶段 (指令微调):</strong> 在一个包含约118万样本的内部多语言、多领域指令微调数据集上进行训练，使模型学会遵循各种指令。</li>
+                        </ol>
+                        <p class="mt-2 text-gray-600">这种策略旨在先“练内功”（推理），再“学招式”（指令遵循）。</p>
+                    </div>
+                     <div class="card col-span-full">
+                        <h3 class="text-xl font-bold mb-3">评测基准 (Evaluation Benchmarks)</h3>
+                        <p class="text-gray-600 mb-4">涵盖了科学、数学、符号、常识、逻辑、代码理解等多个维度的14个基准测试，以全面评估模型的推理能力。</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            <span class="pill">DROP</span>
+                            <span class="pill">WinoGrande</span>
+                            <span class="pill">GSM8K</span>
+                            <span class="pill">MATH</span>
+                            <span class="pill">MMLU-STEM</span>
+                            <span class="pill">BBH</span>
+                            <span class="pill">GPQA</span>
+                            <span class="pill">CruxEval</span>
+                            <span class="pill">ZebraGrid</span>
+                            <span class="pill">LiveBench</span>
+                            <span class="pill">KorBench</span>
+                            <span class="pill">BBH-ZH (自建)</span>
+                            <span class="pill">LeetCode-O (自建)</span>
+                        </div>
+                    </div>
+                    <div class="card col-span-full">
+                        <h3 class="text-xl font-bold mb-3">对比基线 (Baselines)</h3>
+                        <p class="text-gray-600 mb-4">除了与“仅进行第二阶段指令微调”的基线对比，还与多个强大的公开数据集进行了比较：</p>
+                         <ul class="list-disc list-inside mt-4 space-y-2">
+                            <li><strong>WebInstruct:</strong> 从网络挖掘并由LLM提炼的大规模指令数据集。</li>
+                            <li><strong>OpenMathInstruct-2:</strong> 专注于数学问题求解的数据集。</li>
+                            <li><strong>OpenCoder-SFT-Stage-1:</strong> 从通用代码数据合成的问答对数据集。</li>
+                            <li><strong>Python-Edu:</strong> 直接使用高质量的原始Python代码进行语言模型训练。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Results -->
+        <section id="results" class="content-section bg-gray-50">
+            <div class="container mx-auto px-6">
+                <h2 class="section-title">实验结果及核心结论</h2>
+                <p class="section-subtitle">CODEI/O 在多个模型和任务上均展现出一致且普适的性能提升。</p>
+                <div class="card">
+                    <h3 class="text-2xl font-bold mb-4 text-center">Table 1: 主要实验结果</h3>
+                    <p class="text-center text-gray-600 mb-6">下表展示了在 Qwen 2.5 Coder 7B 模型上，不同第一阶段训练数据带来的性能影响。绿色代表相对于基线（2nd Stage Only）的提升，红色代表下降。</p>
+                    <div class="overflow-x-auto">
+                        <table class="latex-table">
+                            <thead>
+                                <tr>
+                                    <th>1st Stage Dataset</th>
+                                    <th># (M)</th>
+                                    <th>Wino Grande</th>
+                                    <th>DROP</th>
+                                    <th>BBH EN</th>
+                                    <th>MATH</th>
+                                    <th>GSM 8K</th>
+                                    <th>Crux-O</th>
+                                    <th>AVG</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2nd Stage Only</td>
+                                    <td>-</td>
+                                    <td>66.9</td>
+                                    <td>70.7</td>
+                                    <td>61.3</td>
+                                    <td>10.9</td>
+                                    <td>83.4</td>
+                                    <td>68.3</td>
+                                    <td>54.8</td>
+                                </tr>
+                                <tr style="background-color: #fef2f2;">
+                                    <td>WI (WebInstruct)</td>
+                                    <td>3.5</td>
+                                    <td style="color: #dc2626;">66.3</td>
+                                    <td style="color: #16a34a;">73.5</td>
+                                    <td style="color: #dc2626;">59.1</td>
+                                    <td style="color: #dc2626;">10.2</td>
+                                    <td style="color: #16a34a;">87.0</td>
+                                    <td style="color: #16a34a;">68.6</td>
+                                    <td style="color: #16a34a;">55.0</td>
+                                </tr>
+                                <tr style="background-color: #fef2f2;">
+                                    <td>OMI2 (OpenMath)</td>
+                                    <td>3.5</td>
+                                    <td style="color: #16a34a;">67.6</td>
+                                    <td style="color: #16a34a;">74.3</td>
+                                    <td style="color: #dc2626;">60.4</td>
+                                    <td style="color: #dc2626;">10.1</td>
+                                    <td style="color: #16a34a;">84.1</td>
+                                    <td style="color: #16a34a;">68.8</td>
+                                    <td style="color: #16a34a;">55.2</td>
+                                </tr>
+                                <tr style="background-color: #fef2f2;">
+                                    <td>PyEdu (Raw Code)</td>
+                                    <td>7.7</td>
+                                    <td style="color: #dc2626;">66.7</td>
+                                    <td style="color: #16a34a;">74.8</td>
+                                    <td style="color: #dc2626;">58.9</td>
+                                    <td style="color: #dc2626;">10.6</td>
+                                    <td style="color: #16a34a;">85.8</td>
+                                    <td style="color: #16a34a;">67.8</td>
+                                    <td>54.8</td>
+                                </tr>
+                                <tr style="background-color: #f0fdf4;">
+                                    <td><strong>CODEI/O</strong></td>
+                                    <td><strong>3.5</strong></td>
+                                    <td style="color: #16a34a;"><strong>67.9</strong></td>
+                                    <td style="color: #16a34a;"><strong>76.4</strong></td>
+                                    <td style="color: #16a34a;"><strong>63.6</strong></td>
+                                    <td style="color: #dc2626;"><strong>10.7</strong></td>
+                                    <td style="color: #16a34a;"><strong>86.4</strong></td>
+                                    <td style="color: #16a34a;"><strong>69.3</strong></td>
+                                    <td style="color: #16a34a;"><strong>57.2</strong></td>
+                                </tr>
+                                <tr style="background-color: #dcfce7;">
+                                    <td><strong>CODEI/O++</strong></td>
+                                    <td><strong>3.5</strong></td>
+                                    <td style="color: #16a34a;"><strong>66.9</strong></td>
+                                    <td style="color: #16a34a;"><strong>79.1</strong></td>
+                                    <td style="color: #16a34a;"><strong>62.5</strong></td>
+                                    <td style="color: #dc2626;"><strong>10.7</strong></td>
+                                    <td style="color: #16a34a;"><strong>85.7</strong></td>
+                                    <td style="color: #16a34a;"><strong>72.1</strong></td>
+                                    <td style="color: #16a34a;"><strong>57.7</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 mt-8">
+                    <div class="card">
+                        <h3 class="text-xl font-bold mb-3">核心结论 1: 普适且均衡的提升</h3>
+                        <p class="text-gray-600">
+                            CODEI/O 带来了全面的性能增益。与其他基线（如 OMI2）可能在特定任务（数学）上表现优异，但在其他任务上性能下降（“红绿相间”）不同，CODEI/O 在几乎所有基准上都实现了提升（“一片绿色”），展现了其提升的是更底层的、可泛化的推理能力。
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-xl font-bold mb-3">核心结论 2: 任务设计 > 原始数据</h3>
+                        <p class="text-gray-600">
+                            直接在海量原始代码（PyEdu）上训练，性能提升微乎其微，甚至有时会下降。这有力地证明了性能的提升并非来自代码数据本身，而是来自 CODEI/O 精心设计的“输入/输出预测”任务，该任务成功地将代码中蕴含的结构化推理模式提炼了出来。
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-xl font-bold mb-3">核心结论 3: 修正机制的有效性</h3>
+                        <p class="text-gray-600">
+                            CODEI/O++ 系统性地优于 CODEI/O，且没有在任何单项任务上造成性能牺牲。这表明基于执行反馈的多轮修正机制是提升数据质量和模型推理能力的有效手段。
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-xl font-bold mb-3">核心结论 4: 跨模型有效性</h3>
+                        <p class="text-gray-600">
+                            无论是 Coder 模型还是通用模型，从 7B 到 27B，CODEI/O 都能带来一致的性能提升，验证了该方法的普适性和可扩展性。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Reviewer's Comments -->
+        <section id="review" class="content-section bg-white">
+            <div class="container mx-auto px-6">
+                <h2 class="section-title">Reviewer's Comments</h2>
+                <p class="section-subtitle">作为一位 AI 研究者，我对这篇工作的锐评、洞见与思考。</p>
+                <div class="space-y-8">
+                    <div class="card">
+                        <h3 class="text-2xl font-bold mb-4">优势 (Strengths)</h3>
+                        <ul class="space-y-4 text-gray-700">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div>
+                                    <h4 class="font-semibold">视角新颖，切入点精准</h4>
+                                    <p>本文巧妙地将“提升通用推理”这一宏大目标，落脚于“代码输入/输出预测”这一具体、可操作且可扩展的任务上。它没有停留在直接使用代码进行预训练的浅层，而是深入挖掘了代码背后可执行、可验证的逻辑结构，并将其转化为与具体语法解耦的自然语言推理过程。这是一个非常深刻的洞察。</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div>
+                                    <h4 class="font-semibold">实验坚实，论证充分</h4>
+                                    <p>实验设计非常严谨。覆盖了多种模型、全面的基准测试和强大的基线对比。特别是消融实验（如仅预测输入/输出、拒绝采样的效果）和各种分析（如数据规模、数据格式、多轮修正的影响）做得非常细致，有力地支撑了核心论点。数据泄露的分析也打消了关键的疑虑。</p>
+                                </div>
+                            </li>
+                             <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div>
+                                    <h4 class="font-semibold">方法具有很高的工程价值和启发性</h4>
+                                    <p>CODEI/O++ 的自修正循环机制，展示了一种利用程序反馈来持续优化合成数据的有效范式，这对于数据驱动的 AI 研究极具启发。整个数据构建流程高度自动化和可扩展，为业界提供了一种低成本、高质量地获取推理数据的新思路。</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-2xl font-bold mb-4">不足与潜在改进方向 (Weaknesses & Future Work)</h3>
+                        <ul class="space-y-4 text-gray-700">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-yellow-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <div>
+                                    <h4 class="font-semibold">对强大“教师模型”的依赖</h4>
+                                    <p>整个流程，从代码格式化到 CoT 生成，都严重依赖于一个强大的教师模型（DeepSeek-V2.5）。这意味着 CODEI/O 学习到的推理模式的上限，在某种程度上受限于教师模型的能力。如果教师模型的推理本身存在偏差或“快捷方式”，这些也可能被蒸馏到学生模型中。</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-yellow-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <div>
+                                    <h4 class="font-semibold">推理模式的覆盖面与深度</h4>
+                                    <p>虽然论文声称覆盖了多种推理模式，但这些模式主要还是隐含在代码逻辑中。对于那些难以用简洁代码表达的复杂推理（如反事实推理、类比推理），CODEI/O 的覆盖可能有限。未来的工作可以探索如何将更广泛的、非程序化的知识和推理形式融入这个框架。</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-blue-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                <div>
+                                    <h4 class="font-semibold">可能的改进方向</h4>
+                                    <p><strong>1. 探索自举（Self-bootstrapping）：</strong> 能否用经过 CODEI/O 训练后的模型，反过来去生成更高质量的 CoT，从而迭代地提升数据集和模型本身，减少对外部教师模型的依赖？<br><strong>2. 融合执行轨迹：</strong> 目前的 CoT 是模型生成的“黑盒”推理。未来可以尝试将代码的实际执行轨迹（Execution Trace）作为一种更结构化、更忠实的“思维链”形式，来指导模型学习。<br><strong>3. 跨模态扩展：</strong> 将这一思想扩展到其他具有“可验证”性质的领域，例如利用物理引擎进行机器人操作规划的推理，或者利用 UI 交互日志进行多步操作推理等。</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>由 Gemini 为您呈现的 CODEI/O 论文深度解析。</p>
+            <p class="text-sm text-gray-400 mt-2">设计灵感来源于 Apple，旨在提供清晰、优雅的信息阅读体验。</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
