@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>124. 二叉树中的最大路径和 - 动态可视化讲解</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- D3.js for visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOV3CQDEZeneA7ZRjEngpCnMdznACsoVRVxnUOhd//HnvpWi6NTI" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    
+    <!-- highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Helvetica Neue', 'Arial', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+
+        .apple-style-card {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .control-btn {
+            background-color: #fff;
+            color: #333;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+
+        .control-btn:hover:not(:disabled) {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .control-btn svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1.25rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .submit-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            background-color: #2563eb;
+            color: white;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            background-color: #1d4ed8;
+        }
+        
+        .node {
+            transition: all 0.5s ease-in-out;
+        }
+        .node circle {
+            stroke-width: 2px;
+            transition: all 0.5s ease-in-out;
+        }
+        .node text {
+            font-size: 14px;
+            font-weight: 600;
+            text-anchor: middle;
+            alignment-baseline: middle;
+            fill: #fff;
+            pointer-events: none;
+        }
+        .link {
+            fill: none;
+            stroke: #9ca3af;
+            stroke-width: 2px;
+            transition: stroke 0.5s ease-in-out;
+        }
+        .katex-display {
+            margin: 1em 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        .katex {
+            font-size: 1.1em;
+        }
+        .status-box {
+            font-family: 'Menlo', 'Monaco', 'Consolas', "Courier New", monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-gray-800">二叉树中的最大路径和</h1>
+            <p class="mt-3 text-lg text-gray-600">LeetCode 124. 动态可视化解析</p>
+        </header>
+
+        <main>
+            <!-- Input Section -->
+            <div class="apple-style-card p-6 mb-8">
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <label for="tree-input" class="font-medium text-gray-700 whitespace-nowrap">输入二叉树 (LeetCode 格式):</label>
+                    <input type="text" id="tree-input" class="input-field" value="[-10,9,20,null,null,15,7]">
+                    <button id="visualize-btn" class="submit-btn w-full sm:w-auto">生成可视化</button>
+                </div>
+                 <p id="input-error" class="text-red-500 text-sm mt-2 hidden"></p>
+            </div>
+
+            <!-- Visualization and State Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <div id="visualization-container" class="apple-style-card p-4 lg:col-span-2 min-h-[400px] md:min-h-[600px] flex items-center justify-center">
+                    <svg id="tree-svg" width="100%" height="100%"></svg>
+                </div>
+                <div id="state-container" class="apple-style-card p-6">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">算法状态</h3>
+                    <div class="status-box space-y-4">
+                        <div>
+                            <p class="font-medium text-gray-600">全局最大和:</p>
+                            <p id="max-sum" class="text-2xl font-bold text-blue-600">-Infinity</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-600">当前节点:</p>
+                            <p id="current-node" class="text-lg font-semibold text-gray-800">N/A</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-600">递归状态:</p>
+                            <p id="status-text" class="text-gray-700 leading-relaxed">等待开始...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="apple-style-card p-4 mb-8 flex justify-center items-center space-x-2 md:space-x-4">
+                <button id="prev-btn" class="control-btn" title="上一步">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 16.811c0 .864-.933 1.405-1.683.977l-7.108-4.062a1.125 1.125 0 010-1.953l7.108-4.062A1.125 1.125 0 0121 8.688v8.123zM11.25 16.811c0 .864-.933 1.405-1.683.977l-7.108-4.062a1.125 1.125 0 010-1.953L9.567 7.71a1.125 1.125 0 011.683.977v8.123z" /></svg>
+                </button>
+                <button id="play-pause-btn" class="control-btn" title="播放/暂停">
+                     <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" /></svg>
+                     <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="hidden"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" /></svg>
+                </button>
+                <button id="next-btn" class="control-btn" title="下一步">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062A1.125 1.125 0 013 16.81V8.688zM12.75 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062a1.125 1.125 0 01-1.683-.977V8.688z" /></svg>
+                </button>
+            </div>
+
+            <!-- Explanation Section -->
+            <div class="apple-style-card p-6 md:p-8">
+                <h2 class="text-2xl font-bold mb-4">算法详解：深度优先搜索 (DFS)</h2>
+                <div class="prose max-w-none prose-indigo">
+                    <p>解决这个问题的核心思想是采用<strong>递归</strong>的深度优先搜索（DFS）。我们对树进行后序遍历，对于每个节点，我们需要思考两个关键问题：</p>
+                    <ol>
+                        <li>这个节点能为它的<strong>父节点</strong>提供多大的“贡献值”？</li>
+                        <li>以这个节点为<strong>路径最高点</strong>（即拐点）的路径和是多少？</li>
+                    </ol>
+                    
+                    <h3 class="font-semibold mt-6">1. 核心概念：贡献值 (Gain)</h3>
+                    <p>我们定义一个递归函数 `maxGain(node)`，它的功能是计算从 `node` 出发，向下延伸的<strong>单边最大路径和</strong>。这个值就是该节点能给父节点提供的“贡献”。</p>
+                    <p>为什么是单边？因为一条路径在一个节点上不能“分叉”。如果路径要经过当前节点并继续向上走到父节点，那么它只能选择走左子树或者右子树，而不能同时选择两者。</p>
+                    <p>`maxGain(node)` 的计算逻辑如下：</p>
+                    <ul>
+                        <li>如果节点为空，贡献为 0。</li>
+                        <li>递归计算左子树的贡献值 `leftGain = max(0, maxGain(node.left))`。</li>
+                        <li>递归计算右子树的贡献值 `rightGain = max(0, maxGain(node.right))`。</li>
+                    </ul>
+                    <p>注意，如果子树的贡献值为负数，我们宁可不选择它，所以和 0 取最大值。这意味着我们可以随时断开路径。</p>
+                    <p>最终，`node` 节点能向上提供的贡献值是：$$ \text{gain} = \text{node.val} + \max(\text{leftGain}, \text{rightGain}) $$</p>
+
+                    <h3 class="font-semibold mt-6">2. 更新全局最大和</h3>
+                    <p>在计算贡献值的同时，我们还需要考虑以当前 `node` 为“拐点”的路径。这条路径从左子树的最深处，经过 `node`，再到右子树的最深处。它的和是 `node.val + leftGain + rightGain`。</p>
+                    <p>我们维护一个全局变量 `maxSum`，在遍历每个节点时，都用这个“拐点路径和”来尝试更新它：</p>
+                    $$ \text{maxSum} = \max(\text{maxSum}, \text{node.val} + \text{leftGain} + \text{rightGain}) $$
+                    <p>这个 `maxSum` 记录了我们在遍历过程中遇到的所有可能路径和的最大值。递归结束后，`maxSum` 就是最终答案。</p>
+                    
+                    <h3 class="font-semibold mt-6">步骤分解</h3>
+                    <ol>
+                        <li>初始化一个全局变量 `maxSum` 为一个极小值（例如负无穷）。</li>
+                        <li>从根节点开始调用递归函数 `maxGain(root)`。</li>
+                        <li>`maxGain(node)` 函数执行：
+                            <ol type="a">
+                                <li><strong>递归基：</strong>如果 `node` 为空，返回 0。</li>
+                                <li><strong>递归深入：</strong>递归调用 `maxGain` 计算左右子节点的单边贡献 `leftGain` 和 `rightGain`。记得与 0 比较，舍弃负贡献。</li>
+                                <li><strong>更新全局最大值：</strong>计算以当前节点为拐点的路径和 `node.val + leftGain + rightGain`，并用它更新 `maxSum`。</li>
+                                <li><strong>返回贡献值：</strong>返回当前节点能为父节点提供的单边最大贡献 `node.val + max(leftGain, rightGain)`。</li>
+                            </ol>
+                        </li>
+                        <li>整个递归过程结束后，`maxSum` 即为所求。</li>
+                    </ol>
+
+                    <h3 class="font-semibold mt-6">复杂度分析</h3>
+                    <ul>
+                        <li><strong>时间复杂度:</strong> $O(N)$，其中 $N$ 是树中节点的数量。我们对每个节点只访问一次。</li>
+                        <li><strong>空间复杂度:</strong> $O(H)$，其中 $H$ 是树的高度。这是递归调用栈所占用的空间。在最坏的情况下（链状树），$H$ 可以是 $N$；在最好的情况下（完全二叉树），$H$ 是 $\log N$。</li>
+                    </ul>
+
+                    <h3 class="font-semibold mt-6">Python 代码实现</h3>
+                    <pre><code class="language-python">
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+
+class Solution:
+    def maxPathSum(self, root: Optional[TreeNode]) -> int:
+        # 初始化全局最大和为一个极小值
+        self.max_sum = float('-inf')
+
+        def max_gain(node):
+            """
+            递归函数：计算以该节点为起点的最大“向下”路径和（贡献值），
+            并在此过程中更新全局最大路径和。
+            """
+            if not node:
+                return 0
+
+            # 递归计算左右子节点的贡献值
+            # 如果贡献值为负，则舍弃，计为0
+            left_gain = max(max_gain(node.left), 0)
+            right_gain = max(max_gain(node.right), 0)
+
+            # 计算以当前节点为“拐点”的路径和，并尝试更新全局最大值
+            # 这条路径不能再向上延伸
+            price_newpath = node.val + left_gain + right_gain
+            self.max_sum = max(self.max_sum, price_newpath)
+
+            # 返回节点的最大贡献值，只能是“直走”的路径
+            # 即 节点值 + 左右子节点中较大的贡献值
+            return node.val + max(left_gain, right_gain)
+
+        # 从根节点开始递归
+        max_gain(root)
+        return self.max_sum
+                    </code></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Elements ---
+    const svg = d3.select("#tree-svg");
+    const container = document.getElementById('visualization-container');
+    const inputEl = document.getElementById('tree-input');
+    const visualizeBtn = document.getElementById('visualize-btn');
+    const errorEl = document.getElementById('input-error');
+    
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const playIcon = document.getElementById('play-icon');
+    const pauseIcon = document.getElementById('pause-icon');
+
+    const maxSumEl = document.getElementById('max-sum');
+    const currentNodeEl = document.getElementById('current-node');
+    const statusTextEl = document.getElementById('status-text');
+
+    // --- State ---
+    let steps = [];
+    let currentStep = -1;
+    let isPlaying = false;
+    let playInterval;
+    let root = null;
+    let nodes = [];
+    let links = [];
+    
+    // --- Constants ---
+    const DURATION = 500;
+    const NODE_RADIUS = 22;
+    const COLORS = {
+        DEFAULT: '#6b7280', // gray-500
+        CURRENT: '#3b82f6', // blue-500
+        PATH: '#16a34a', // green-600
+        HIGHLIGHT: '#f59e0b' // amber-500
+    };
+
+    // --- Core Logic ---
+
+    function parseInput(inputStr) {
+        errorEl.classList.add('hidden');
+        try {
+            // Allow for formats like [1,2,3] and [1, 2, 3]
+            const sanitizedStr = inputStr.replace(/\s/g, '');
+            if (!sanitizedStr.startsWith('[') || !sanitizedStr.endsWith(']')) {
+                throw new Error("格式必须是 [...]");
+            }
+            const arr = JSON.parse(sanitizedStr);
+            if (!Array.isArray(arr)) {
+                 throw new Error("输入必须是一个数组");
+            }
+            if (arr.length === 0) return null;
+
+            const rootNode = { val: arr[0], id: `node-0`, children: [] };
+            const queue = [rootNode];
+            let i = 1;
+
+            while (queue.length > 0 && i < arr.length) {
+                const current = queue.shift();
+                if (current === null) continue;
+
+                // Left child
+                if (i < arr.length) {
+                    if (arr[i] !== null) {
+                        const leftChild = { val: arr[i], id: `node-${i}`, children: [] };
+                        current.children.push(leftChild);
+                        queue.push(leftChild);
+                    } else {
+                        queue.push(null);
+                    }
+                    i++;
+                }
+
+                // Right child
+                if (i < arr.length) {
+                     if (arr[i] !== null) {
+                        const rightChild = { val: arr[i], id: `node-${i}`, children: [] };
+                        // d3.hierarchy expects children in a specific order.
+                        // To ensure right is after left, we might need to pad with a placeholder
+                        if(current.children.length === 0) {
+                            current.children.push(null); // Placeholder for left
+                        }
+                        current.children.push(rightChild);
+                        queue.push(rightChild);
+                    } else {
+                        queue.push(null);
+                    }
+                    i++;
+                }
+            }
+            // Clean up placeholders for d3
+            const cleanChildren = (node) => {
+                if (!node || !node.children) return;
+                node.left = node.children[0] || null;
+                node.right = node.children[1] || null;
+                node.children = [node.left, node.right].filter(c => c !== null);
+                if(node.left) cleanChildren(node.left);
+                if(node.right) cleanChildren(node.right);
+            }
+            cleanChildren(rootNode);
+            return rootNode;
+        } catch (e) {
+            errorEl.textContent = `输入解析失败: ${e.message}。请使用类似 [-10,9,20,null,null,15,7] 的格式。`;
+            errorEl.classList.remove('hidden');
+            return null;
+        }
+    }
+
+    function generateSteps(treeRoot) {
+        steps = [];
+        let maxSum = -Infinity;
+
+        function maxGain(node) {
+            steps.push({
+                type: 'enter',
+                nodeId: node.id,
+                message: `进入节点 ${node.val}。递归计算其子节点的贡献值。`
+            });
+
+            // --- Recurse on Left Child ---
+            let leftGain = 0;
+            if (node.left) {
+                steps.push({
+                    type: 'down',
+                    from: node.id,
+                    to: node.left.id,
+                    message: `移动到左子节点 ${node.left.val}。`
+                });
+                leftGain = maxGain(node.left);
+                 steps.push({
+                    type: 'up',
+                    from: node.left.id,
+                    to: node.id,
+                    gain: leftGain,
+                    message: `左子节点 ${node.left.val} 返回贡献值 ${leftGain}。`
+                });
+            }
+            
+            const finalLeftGain = Math.max(leftGain, 0);
+            if (leftGain !== finalLeftGain) {
+                 steps.push({
+                    type: 'eval_gain',
+                    nodeId: node.id,
+                    gain: leftGain,
+                    finalGain: finalLeftGain,
+                    side: '左',
+                    message: `左子贡献 ${leftGain} < 0，舍弃。最终左贡献为 0。`
+                });
+            }
+
+            // --- Recurse on Right Child ---
+            let rightGain = 0;
+            if (node.right) {
+                 steps.push({
+                    type: 'down',
+                    from: node.id,
+                    to: node.right.id,
+                    message: `移动到右子节点 ${node.right.val}。`
+                });
+                rightGain = maxGain(node.right);
+                 steps.push({
+                    type: 'up',
+                    from: node.right.id,
+                    to: node.id,
+                    gain: rightGain,
+                    message: `右子节点 ${node.right.val} 返回贡献值 ${rightGain}。`
+                });
+            }
+
+            const finalRightGain = Math.max(rightGain, 0);
+             if (rightGain !== finalRightGain) {
+                 steps.push({
+                    type: 'eval_gain',
+                    nodeId: node.id,
+                    gain: rightGain,
+                    finalGain: finalRightGain,
+                    side: '右',
+                    message: `右子贡献 ${rightGain} < 0，舍弃。最终右贡献为 0。`
+                });
+            }
+
+            // --- Update Max Sum ---
+            const newPathSum = node.val + finalLeftGain + finalRightGain;
+            const oldMaxSum = maxSum;
+            maxSum = Math.max(maxSum, newPathSum);
+            steps.push({
+                type: 'update_max',
+                nodeId: node.id,
+                leftGain: finalLeftGain,
+                rightGain: finalRightGain,
+                newPathSum: newPathSum,
+                oldMaxSum: oldMaxSum,
+                newMaxSum: maxSum,
+                updated: maxSum > oldMaxSum,
+                message: `在节点 ${node.val}，计算以其为拐点的路径和:<br>${node.val} + ${finalLeftGain} (左) + ${finalRightGain} (右) = ${newPathSum}。<br>${newPathSum > oldMaxSum ? `大于当前最大和 ${oldMaxSum}，更新！` : `不大于当前最大和 ${oldMaxSum}。`}`
+            });
+
+            // --- Return Gain ---
+            const returnGain = node.val + Math.max(finalLeftGain, finalRightGain);
+            steps.push({
+                type: 'return',
+                nodeId: node.id,
+                leftGain: finalLeftGain,
+                rightGain: finalRightGain,
+                returnGain: returnGain,
+                message: `节点 ${node.val} 计算完毕。返回给父节点的贡献值为:<br>${node.val} + max(${finalLeftGain}, ${finalRightGain}) = ${returnGain}。`
+            });
+            return returnGain;
+        }
+
+        if (treeRoot) {
+            maxGain(treeRoot);
+            steps.push({
+                type: 'done',
+                finalSum: maxSum,
+                message: `所有节点遍历完毕。最终最大路径和为 ${maxSum}。`
+            });
+        }
+    }
+
+    function drawTree() {
+        if (!root) {
+            svg.html("");
+            return;
+        }
+        
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        svg.html("").attr('viewBox', `0 0 ${width} ${height}`);
+        const g = svg.append("g");
+
+        const hierarchy = d3.hierarchy(root);
+        const treeLayout = d3.tree().size([width - 80, height - 120]);
+        const treeData = treeLayout(hierarchy);
+        
+        nodes = treeData.descendants();
+        links = treeData.links();
+
+        // Center the tree
+        const xOffset = 40;
+        const yOffset = 60;
+        g.attr("transform", `translate(${xOffset}, ${yOffset})`);
+
+        // Draw links
+        g.selectAll(".link")
+            .data(links)
+            .enter()
+            .append("path")
+            .attr("class", "link")
+            .attr("d", d3.linkVertical()
+                .x(d => d.x)
+                .y(d => d.y)
+            )
+            .attr('id', d => `link-${d.source.data.id}-to-${d.target.data.id}`);
+
+        // Draw nodes
+        const nodeGroup = g.selectAll(".node")
+            .data(nodes)
+            .enter()
+            .append("g")
+            .attr("class", "node")
+            .attr("transform", d => `translate(${d.x},${d.y})`)
+            .attr("id", d => d.data.id);
+
+        nodeGroup.append("circle")
+            .attr("r", NODE_RADIUS)
+            .style("fill", COLORS.DEFAULT);
+
+        nodeGroup.append("text")
+            .text(d => d.data.val);
+    }
+    
+    function renderStep(stepIndex) {
+        if (stepIndex < 0 || stepIndex >= steps.length) return;
+        
+        const step = steps[stepIndex];
+
+        // Reset all visuals
+        svg.selectAll('.node circle').style('fill', COLORS.DEFAULT).attr('r', NODE_RADIUS);
+        svg.selectAll('.link').style('stroke', '#9ca3af').style('stroke-width', '2px');
+        
+        // Update state panel
+        statusTextEl.innerHTML = step.message;
+        
+        if (step.type === 'enter' || step.type === 'eval_gain' || step.type === 'return') {
+            const node = d3.select(`#${step.nodeId}`);
+            node.select('circle').style('fill', COLORS.CURRENT).attr('r', NODE_RADIUS * 1.2);
+            currentNodeEl.textContent = node.datum().data.val;
+        }
+        
+        if (step.type === 'down' || step.type === 'up') {
+            const fromNode = d3.select(`#${step.from}`);
+            const toNode = d3.select(`#${step.to}`);
+            fromNode.select('circle').style('fill', COLORS.HIGHLIGHT);
+            toNode.select('circle').style('fill', COLORS.CURRENT).attr('r', NODE_RADIUS * 1.2);
+            
+            const linkId = step.type === 'down' ? `#link-${step.from}-to-${step.to}` : `#link-${step.to}-to-${step.from}`;
+            d3.select(linkId).style('stroke', COLORS.CURRENT).style('stroke-width', '4px');
+            currentNodeEl.textContent = toNode.datum().data.val;
+        }
+
+        if (step.type === 'update_max') {
+            const node = d3.select(`#${step.nodeId}`);
+            node.select('circle').style('fill', COLORS.CURRENT).attr('r', NODE_RADIUS * 1.2);
+            currentNodeEl.textContent = node.datum().data.val;
+            
+            if (step.updated) {
+                maxSumEl.textContent = step.newMaxSum;
+                maxSumEl.style.color = COLORS.PATH;
+                d3.select(maxSumEl).transition().duration(DURATION)
+                    .style('transform', 'scale(1.2)')
+                    .transition().duration(DURATION)
+                    .style('transform', 'scale(1)')
+                    .on('end', () => maxSumEl.style.color = '#2563eb');
+
+                // Highlight the path
+                if(node.datum().data.left) d3.select(`#link-${node.datum().data.id}-to-${node.datum().data.left.id}`).style('stroke', COLORS.PATH).style('stroke-width', '4px');
+                if(node.datum().data.right) d3.select(`#link-${node.datum().data.id}-to-${node.datum().data.right.id}`).style('stroke', COLORS.PATH).style('stroke-width', '4px');
+            } else {
+                 maxSumEl.textContent = step.oldMaxSum;
+            }
+        }
+        
+        if (step.type === 'done') {
+            maxSumEl.textContent = step.finalSum;
+            currentNodeEl.textContent = '完成';
+            svg.selectAll('.node circle').style('fill', COLORS.PATH);
+        }
+        
+        updateControls();
+    }
+    
+    function updateControls() {
+        prevBtn.disabled = currentStep <= 0;
+        nextBtn.disabled = currentStep >= steps.length - 1;
+        playPauseBtn.disabled = currentStep >= steps.length - 1;
+
+        if (isPlaying) {
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+        } else {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        }
+    }
+
+    function start() {
+        const inputStr = inputEl.value;
+        root = parseInput(inputStr);
+        
+        if (root) {
+            stopPlayback();
+            drawTree();
+            generateSteps(root);
+            currentStep = -1;
+            
+            // Reset UI
+            maxSumEl.textContent = '-Infinity';
+            currentNodeEl.textContent = 'N/A';
+            statusTextEl.innerHTML = '准备就绪。点击“播放”或“下一步”开始。';
+            
+            // Initial render
+            renderStep(currentStep);
+            updateControls();
+        }
+    }
+    
+    function stopPlayback() {
+        isPlaying = false;
+        clearInterval(playInterval);
+        updateControls();
+    }
+
+    // --- Event Listeners ---
+    visualizeBtn.addEventListener('click', start);
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            start();
+        }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        stopPlayback();
+        if (currentStep < steps.length - 1) {
+            currentStep++;
+            renderStep(currentStep);
+        }
+    });
+
+    prevBtn.addEventListener('click', () => {
+        stopPlayback();
+        if (currentStep > 0) {
+            currentStep--;
+            renderStep(currentStep);
+        } else if (currentStep === 0) {
+            currentStep = -1;
+            // Go to initial state
+            drawTree();
+            maxSumEl.textContent = '-Infinity';
+            currentNodeEl.textContent = 'N/A';
+            statusTextEl.innerHTML = '准备就绪。点击“播放”或“下一步”开始。';
+            updateControls();
+        }
+    });
+
+    playPauseBtn.addEventListener('click', () => {
+        if (isPlaying) {
+            stopPlayback();
+        } else {
+            if (steps.length === 0 || currentStep >= steps.length - 1) {
+                start();
+            }
+            isPlaying = true;
+            updateControls();
+            playInterval = setInterval(() => {
+                if (currentStep < steps.length - 1) {
+                    currentStep++;
+                    renderStep(currentStep);
+                } else {
+                    stopPlayback();
+                }
+            }, 1500);
+        }
+    });
+    
+    window.addEventListener('resize', drawTree);
+
+    // --- Initial Load ---
+    start();
+    hljs.highlightAll();
+    // This function is from the KaTeX auto-render script and will render all math
+    // in the document after the DOM is ready.
+    if (typeof renderMathInElement === 'function') {
+        renderMathInElement(document.body);
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>算法可视化：路径总和 III</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU07EWpWxfpUGEKUT2zAKGmYkhOKvG5g4fVLTdErsNHYAnAfwHnvVoe" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlV1e1Y9HYx5ep7TM7Ysd28M7AojtlHkRfDaHv8rTMobP1frzBlUSJfuL6C" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .katex-display > .katex {
+            text-align: left !important;
+        }
+        .tab-active {
+            border-color: #3b82f6; /* blue-500 */
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .node circle, .edge {
+            transition: all 0.3s ease-in-out;
+        }
+        /* A vibrant green for successfully found paths */
+        .highlight-path-found {
+            stroke: #16a34a !important; /* green-600 */
+            stroke-width: 4px !important;
+        }
+        .node .highlight-path-found-fill {
+             fill: #dcfce7; /* green-100 */
+        }
+        /* A vibrant blue for the current node being processed */
+        .highlight-current-node {
+            stroke: #2563eb; /* blue-600 */
+            stroke-width: 4px;
+            fill: #dbeafe; /* blue-100 */
+        }
+        /* A vibrant purple for the path currently being explored */
+        .highlight-path-explore {
+            stroke: #9333ea !important; /* purple-600 */
+            stroke-width: 3px !important;
+        }
+        /* A vibrant orange for the root of a sub-problem */
+        .highlight-sub-problem-root {
+            stroke: #f97316; /* orange-500 */
+            stroke-width: 4px;
+            fill: #ffedd5; /* orange-100 */
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">路径总和 III (Path Sum III)</h1>
+            <p class="mt-4 text-lg text-slate-600">一个关于二叉树路径求和问题的交互式探索</p>
+        </header>
+
+        <!-- Main Content: Single column flex layout -->
+        <div class="flex flex-col gap-8">
+            <!-- Top Section: Controls & Visualization -->
+            <div class="w-full bg-white rounded-xl shadow-lg p-6">
+                <!-- Input Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pb-6 border-b border-slate-200">
+                    <div>
+                        <label for="tree-input" class="block text-sm font-medium text-slate-700 mb-1">二叉树数组 (LeetCode 格式)</label>
+                        <input type="text" id="tree-input" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="[10,5,-3,3,2,null,11,3,-2,null,1]">
+                    </div>
+                    <div>
+                        <label for="target-sum-input" class="block text-sm font-medium text-slate-700 mb-1">目标和 (targetSum)</label>
+                        <input type="number" id="target-sum-input" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="8">
+                    </div>
+                    <div class="self-end">
+                        <button id="visualize-btn" class="w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            生成可视化
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Visualization Area -->
+                <div id="viz-container" class="min-h-[450px] w-full flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden">
+                    <svg id="tree-svg" class="w-full h-full"></svg>
+                </div>
+                 <!-- Status & Controls -->
+                <div class="mt-6">
+                    <div class="bg-slate-100 rounded-lg p-4 min-h-[80px]">
+                        <h3 class="font-semibold text-slate-800 mb-2">状态解读:</h3>
+                        <p id="status-text" class="text-slate-600 text-sm">点击 "生成可视化" 开始。</p>
+                    </div>
+                    <div class="flex items-center justify-center space-x-2 mt-4">
+                        <button id="prev-btn" class="control-btn p-2 rounded-full bg-white border border-slate-300 hover:bg-slate-100 transition-colors" title="上一步">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+                        </button>
+                        <button id="play-pause-btn" class="control-btn p-2 rounded-full bg-white border border-slate-300 hover:bg-slate-100 transition-colors" title="播放/暂停">
+                            <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                        </button>
+                        <button id="next-btn" class="control-btn p-2 rounded-full bg-white border border-slate-300 hover:bg-slate-100 transition-colors" title="下一步">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- Prefix Sum Map Display - MOVED HERE -->
+                <div id="prefix-sum-viz" class="mt-6 hidden">
+                    <h3 class="font-semibold text-slate-800 mb-2">前缀和哈希表 (prefixSumMap)</h3>
+                    <div id="prefix-map-container" class="bg-slate-100 rounded-lg p-3 text-sm font-mono flex flex-wrap gap-2 min-h-[40px]">
+                        <!-- Map entries will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Section: Explanations -->
+            <div class="w-full bg-white rounded-xl shadow-lg p-6">
+                <!-- Tabs -->
+                <div class="border-b border-slate-200 mb-6">
+                    <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                        <button id="tab-dfs" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 tab-active">
+                            DFS (暴力解法)
+                        </button>
+                        <button id="tab-prefix-sum" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300">
+                            前缀和优化
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Explanation Content -->
+                <div id="content-dfs" class="prose prose-slate max-w-none">
+                    <h3 class="text-xl font-semibold text-slate-900">核心思想</h3>
+                    <p>
+                        最直观的方法是遍历树中的每一个节点。对于每一个节点，我们都把它当作一个潜在路径的起始点，然后从这个节点开始，向下进行深度优先搜索（DFS），累加路径上的节点值。
+                    </p>
+                    <p>
+                        如果在向下搜索的过程中，累加和恰好等于 <code>targetSum</code>，我们就找到了一个有效路径，计数器加一。这个过程相当于两层嵌套的递归。
+                    </p>
+                    <h3 class="text-xl font-semibold text-slate-900 mt-6">步骤分解</h3>
+                    <ol>
+                        <li><strong>主函数 (pathSum)</strong>:
+                            <ul>
+                                <li>如果根节点为空，直接返回 0。</li>
+                                <li>核心逻辑是：结果 = (以当前 root 为起点，和为 targetSum 的路径数) + (在左子树中，和为 targetSum 的路径数) + (在右子树中，和为 targetSum 的路径数)。</li>
+                                <li>这需要两个递归函数来完成。一个用于遍历所有节点（作为起点），另一个用于从指定起点向下寻找路径。</li>
+                            </ul>
+                        </li>
+                        <li><strong>辅助函数 (rootSum)</strong>:
+                            <ul>
+                                <li>这个函数计算以<strong>指定节点</strong>为起点，向下能构成多少条和为 <code>targetSum</code> 的路径。</li>
+                                <li>它会检查当前节点值是否等于 <code>targetSum</code>，并递归地在左右子树中寻找和为 <code>targetSum - node.val</code> 的路径。</li>
+                            </ul>
+                        </li>
+                    </ol>
+                    <h3 class="text-xl font-semibold text-slate-900 mt-6">复杂度分析</h3>
+                    <ul>
+                        <li><strong>时间复杂度</strong>: <span class="time-complexity-dfs">$O(N^2)$</span>。在最坏的情况下（链状树），对于每个节点，我们都需要再次遍历其下的所有节点。对于平衡树，复杂度是 $O(N \log N)$。</li>
+                        <li><strong>空间复杂度</strong>: <span class="space-complexity-dfs">$O(N)$</span>。递归栈的深度，最坏情况下是 $O(N)$，平衡树情况下是 $O(\log N)$。</li>
+                    </ul>
+                    <h3 class="text-xl font-semibold text-slate-900 mt-6">Python 代码</h3>
+                    <pre><code class="language-python bg-slate-100 rounded-md p-4 block text-sm overflow-x-auto"># Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+
+class Solution:
+    def pathSum(self, root: Optional[TreeNode], targetSum: int) -> int:
+        if not root:
+            return 0
+        
+        # 1. 以 root 为起点的路径
+        count = self.rootSum(root, targetSum)
+        # 2. 递归到左子树，寻找路径
+        count += self.pathSum(root.left, targetSum)
+        # 3. 递归到右子树，寻找路径
+        count += self.pathSum(root.right, targetSum)
+        
+        return count
+
+    def rootSum(self, node: Optional[TreeNode], target: int) -> int:
+        """计算以 node 为起点，和为 target 的路径数"""
+        if not node:
+            return 0
+        
+        res = 0
+        if node.val == target:
+            res += 1
+        
+        # 继续向下寻找
+        res += self.rootSum(node.left, target - node.val)
+        res += self.rootSum(node.right, target - node.val)
+        
+        return res
+</code></pre>
+                </div>
+
+                <div id="content-prefix-sum" class="prose prose-slate max-w-none hidden">
+                    <h3 class="text-xl font-semibold text-slate-900">核心思想</h3>
+                    <p>
+                        暴力解法存在大量的重复计算。我们可以用 "前缀和" 的思想来优化。前缀和是指从根节点到当前节点的路径上所有节点值的总和。
+                    </p>
+                    <p>
+                        假设从根到当前节点 <code>curr</code> 的前缀和是 <code>curr_sum</code>，我们要寻找一条路径，其和为 <code>targetSum</code>，且终点为 <code>curr</code>。如果存在一个祖先节点 <code>prev</code>，使得从根到 <code>prev</code> 的前缀和为 <code>curr_sum - targetSum</code>，那么从 <code>prev</code> 的下一个节点到 <code>curr</code> 的这条路径和就正好是 <code>targetSum</code>。
+                    </p>
+                     <p>
+                        因此，我们只需一次 DFS 遍历，同时用一个哈希表 (HashMap) 记录从根到当前路径上，各种前缀和出现的次数。
+                    </p>
+                    <h3 class="text-xl font-semibold text-slate-900 mt-6">步骤分解</h3>
+                    <ol>
+                        <li><strong>初始化</strong>: 创建一个哈希表 <code>prefix_map</code>，用于存储 {前缀和: 次数}。为了处理从根节点开始的路径，我们预先存入 <code>{0: 1}</code>。</li>
+                        <li><strong>DFS 遍历</strong>:
+                            <ul>
+                                <li>进入一个节点，更新当前路径的前缀和 <code>current_sum</code>。</li>
+                                <li>在哈希表中查找 <code>current_sum - targetSum</code>。如果存在，说明找到了若干条以当前节点为终点的有效路径，将这些路径的数量累加到最终结果中。</li>
+                                <li>将当前的前缀和 <code>current_sum</code> 存入哈希表，使其出现次数加一。</li>
+                                <li>递归地对左右子节点进行 DFS 遍历。</li>
+                                <li><strong>回溯</strong>: 当一个节点的左右子树都遍历完成后，要返回其父节点时，必须将当前节点的前缀和从哈希表中移除（出现次数减一），以确保它不会影响到其他分支的计算。这是关键一步。</li>
+                            </ul>
+                        </li>
+                    </ol>
+                    <h3 class="text-xl font-semibold text-slate-900 mt-6">复杂度分析</h3>
+                    <ul>
+                        <li><strong>时间复杂度</strong>: <span class="time-complexity-prefix">$O(N)$</span>。我们只需要遍历每个节点一次。</li>
+                        <li><strong>空间复杂度</strong>: <span class="space-complexity-prefix">$O(N)$</span>。哈希表和递归栈都需要空间。最坏情况下（链状树），空间复杂度是 $O(N)$。对于平衡树，是 $O(\log N)$。</li>
+                    </ul>
+                    <h3 class="text-xl font-semibold text-slate-900 mt-6">Python 代码</h3>
+                    <pre><code class="language-python bg-slate-100 rounded-md p-4 block text-sm overflow-x-auto"># Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+
+class Solution:
+    def pathSum(self, root: Optional[TreeNode], targetSum: int) -> int:
+        # key: 前缀和, value: 该前缀和出现的次数
+        prefix_map = {0: 1}
+        
+        def dfs(node, current_sum):
+            if not node:
+                return 0
+            
+            # 1. 更新当前路径和
+            current_sum += node.val
+            
+            # 2. 查找是否存在 targetSum 路径
+            #    curr_sum - (curr_sum - targetSum) = targetSum
+            count = prefix_map.get(current_sum - targetSum, 0)
+            
+            # 3. 更新哈希表，记录当前前缀和
+            prefix_map[current_sum] = prefix_map.get(current_sum, 0) + 1
+            
+            # 4. 递归进入子节点
+            count += dfs(node.left, current_sum)
+            count += dfs(node.right, current_sum)
+            
+            # 5. 回溯：移除当前前缀和，防止影响兄弟节点
+            prefix_map[current_sum] -= 1
+            
+            return count
+
+        return dfs(root, 0)
+</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- UTILITIES & SETUP ---
+        const SVG_NS = "http://www.w3.org/2000/svg";
+        const treeSvg = document.getElementById('tree-svg');
+        const statusText = document.getElementById('status-text');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const visualizeBtn = document.getElementById('visualize-btn');
+        const treeInput = document.getElementById('tree-input');
+        const targetSumInput = document.getElementById('target-sum-input');
+        const prefixSumViz = document.getElementById('prefix-sum-viz');
+        const prefixMapContainer = document.getElementById('prefix-map-container');
+
+        let animationSteps = [];
+        let currentStep = -1;
+        let timer = null;
+        let activeAlgorithm = 'dfs';
+        let treeRoot = null; // Cache the parsed tree
+
+        class TreeNode {
+            constructor(val, left = null, right = null) {
+                this.val = val;
+                this.left = left;
+                this.right = right;
+                this.id = `node-${Math.random().toString(36).substr(2, 9)}`;
+                this.x = 0;
+                this.y = 0;
+            }
+        }
+
+        function parseTree(arr) {
+            if (!arr || arr.length === 0 || arr[0] === null) {
+                return null;
+            }
+            const root = new TreeNode(arr[0]);
+            const queue = [root];
+            let i = 1;
+            while (queue.length > 0 && i < arr.length) {
+                const currentNode = queue.shift();
+                if (i < arr.length && arr[i] !== null && arr[i] !== undefined) {
+                    currentNode.left = new TreeNode(arr[i]);
+                    queue.push(currentNode.left);
+                }
+                i++;
+                if (i < arr.length && arr[i] !== null && arr[i] !== undefined) {
+                    currentNode.right = new TreeNode(arr[i]);
+                    queue.push(currentNode.right);
+                }
+                i++;
+            }
+            return root;
+        }
+        
+        // --- VISUALIZATION LOGIC ---
+        function calculateNodePositions(node, depth = 0, pos = { val: 0 }) {
+            if (!node) return;
+            calculateNodePositions(node.left, depth + 1, pos);
+            node.x = pos.val * 80 + 40;
+            node.y = depth * 100 + 50;
+            pos.val++;
+            calculateNodePositions(node.right, depth + 1, pos);
+        }
+
+        function drawTree(root, highlights = {}) {
+            treeSvg.innerHTML = '';
+            if (!root) return;
+            
+            calculateNodePositions(root, 0, { val: 0 });
+
+            const allNodes = [];
+            const allEdges = [];
+            const queue = [root];
+            const visited = new Set();
+            
+            while(queue.length > 0) {
+                const node = queue.shift();
+                if (!node || visited.has(node.id)) continue;
+                visited.add(node.id);
+                allNodes.push(node);
+                if (node.left) {
+                    allEdges.push({ from: node, to: node.left });
+                    queue.push(node.left);
+                }
+                if (node.right) {
+                    allEdges.push({ from: node, to: node.right });
+                    queue.push(node.right);
+                }
+            }
+
+            let maxX = 0, maxY = 0;
+            allNodes.forEach(node => {
+                maxX = Math.max(maxX, node.x);
+                maxY = Math.max(maxY, node.y);
+            });
+            treeSvg.setAttribute('viewBox', `0 0 ${maxX + 40} ${maxY + 40}`);
+
+            // Draw edges first
+            allEdges.forEach(edge => {
+                const line = document.createElementNS(SVG_NS, 'line');
+                line.setAttribute('x1', edge.from.x);
+                line.setAttribute('y1', edge.from.y);
+                line.setAttribute('x2', edge.to.x);
+                line.setAttribute('y2', edge.to.y);
+                line.setAttribute('stroke', '#94a3b8'); // slate-400
+                line.setAttribute('stroke-width', '2');
+                line.classList.add('edge');
+                if (highlights.edges && highlights.edges.includes(`${edge.from.id}-${edge.to.id}`)) {
+                    line.classList.add('highlight-path-explore');
+                }
+                if (highlights.foundEdges && highlights.foundEdges.includes(`${edge.from.id}-${edge.to.id}`)) {
+                    line.classList.add('highlight-path-found');
+                }
+                treeSvg.appendChild(line);
+            });
+
+            // Draw nodes
+            allNodes.forEach(node => {
+                const group = document.createElementNS(SVG_NS, 'g');
+                group.classList.add('node');
+                group.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+
+                const circle = document.createElementNS(SVG_NS, 'circle');
+                circle.setAttribute('r', '20');
+                circle.setAttribute('fill', '#fff');
+                circle.setAttribute('stroke', '#cbd5e1'); // slate-300
+                circle.setAttribute('stroke-width', '2');
+
+                if (highlights.nodes && highlights.nodes.includes(node.id)) {
+                    circle.classList.add('highlight-current-node');
+                }
+                if (highlights.subProblemRoot && highlights.subProblemRoot === node.id) {
+                     circle.classList.add('highlight-sub-problem-root');
+                }
+                if (highlights.foundNodes && highlights.foundNodes.includes(node.id)) {
+                    circle.classList.add('highlight-path-found-fill');
+                }
+
+                const text = document.createElementNS(SVG_NS, 'text');
+                text.textContent = node.val;
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dy', '.3em');
+                text.setAttribute('fill', '#1e293b'); // slate-800
+                text.setAttribute('font-size', '14px');
+                text.setAttribute('font-weight', '600');
+
+                group.appendChild(circle);
+                group.appendChild(text);
+                treeSvg.appendChild(group);
+            });
+        }
+        
+        // --- ALGORITHM & STEP GENERATION ---
+        
+        function generateDfsSteps(root, targetSum) {
+            animationSteps = [];
+            let foundCount = 0;
+            let cumulativeFoundPaths = { nodes: new Set(), edges: new Set() };
+
+            function recordStep(description, highlights) {
+                animationSteps.push({ 
+                    description, 
+                    highlights: { 
+                        ...highlights, 
+                        foundNodes: Array.from(cumulativeFoundPaths.nodes),
+                        foundEdges: Array.from(cumulativeFoundPaths.edges)
+                    } 
+                });
+            }
+
+            function rootSum(node, target, path) {
+                if (!node) return;
+                
+                const newPath = [...path, node];
+                const currentSum = newPath.reduce((sum, n) => sum + n.val, 0);
+
+                const pathNodeIds = newPath.map(n => n.id);
+                const pathEdgeIds = [];
+                for(let i=0; i < newPath.length - 1; i++) {
+                    pathEdgeIds.push(`${newPath[i].id}-${newPath[i+1].id}`);
+                }
+                
+                const subProblemRootNode = newPath[0];
+
+                recordStep(
+                    `从橙色节点 ${subProblemRootNode.val} 开始探索。当前路径和: ${currentSum}。`, 
+                    { nodes: [node.id], subProblemRoot: subProblemRootNode.id, edges: pathEdgeIds }
+                );
+
+                if (currentSum === targetSum) {
+                    foundCount++;
+                    pathNodeIds.forEach(id => cumulativeFoundPaths.nodes.add(id));
+                    pathEdgeIds.forEach(id => cumulativeFoundPaths.edges.add(id));
+                    recordStep(
+                        `找到一条路径！总数: ${foundCount}。路径和: ${currentSum} = ${targetSum}。`,
+                        { nodes: [node.id], subProblemRoot: subProblemRootNode.id }
+                    );
+                }
+                
+                rootSum(node.left, target, newPath);
+                rootSum(node.right, target, newPath);
+            }
+
+            function pathSum(node) {
+                if (!node) return;
+                recordStep(`将节点 ${node.val} 作为新的路径起点。`, { subProblemRoot: node.id });
+                rootSum(node, targetSum, []);
+                pathSum(node.left);
+                pathSum(node.right);
+            }
+            
+            recordStep('开始使用 DFS (暴力解法)。我们将遍历每个节点，并以它为起点向下寻找路径。', {});
+            pathSum(root);
+            recordStep(`遍历完成！共找到 ${foundCount} 条路径。`, {});
+        }
+
+        function generatePrefixSumSteps(root, targetSum) {
+            animationSteps = [];
+            let count = 0;
+            const prefixMap = { 0: 1 };
+
+            function recordStep(description, highlights, mapState) {
+                animationSteps.push({ description, highlights, mapState: { ...mapState } });
+            }
+
+            function dfs(node, currentSum, path) {
+                if (!node) return;
+
+                const newPath = [...path, node];
+                currentSum += node.val;
+                
+                const pathNodeIds = newPath.map(n => n.id);
+                const pathEdgeIds = [];
+                for(let i=0; i < newPath.length - 1; i++) {
+                    pathEdgeIds.push(`${newPath[i].id}-${newPath[i+1].id}`);
+                }
+
+                recordStep(
+                    `访问节点 ${node.val}。当前从根开始的前缀和为 ${currentSum}。`,
+                    { nodes: [node.id], edges: pathEdgeIds },
+                    prefixMap
+                );
+                
+                const complement = currentSum - targetSum;
+                if (prefixMap[complement]) {
+                    const numFound = prefixMap[complement];
+                    count += numFound;
+                    recordStep(
+                        `发现 ${numFound} 条路径！因为 prefixMap 中存在 key 为 ${complement} (即 ${currentSum} - ${targetSum}) 的项。总数: ${count}。`,
+                        { nodes: [node.id], foundNodes: [node.id] }, // Highlight the end node of the found path
+                        prefixMap
+                    );
+                }
+
+                prefixMap[currentSum] = (prefixMap[currentSum] || 0) + 1;
+                recordStep(
+                    `更新 prefixMap：将 ${currentSum} 的计数增加到 ${prefixMap[currentSum]}。`,
+                    { nodes: [node.id], edges: pathEdgeIds },
+                    prefixMap
+                );
+
+                dfs(node.left, currentSum, newPath);
+                dfs(node.right, currentSum, newPath);
+
+                prefixMap[currentSum] -= 1;
+                recordStep(
+                    `回溯：从节点 ${node.val} 返回。将 ${currentSum} 的计数减回到 ${prefixMap[currentSum]}。`,
+                    { nodes: [node.id] },
+                    prefixMap
+                );
+            }
+            
+            recordStep('开始使用前缀和优化。我们将用哈希表记录路径上的前缀和。', {}, { 0: 1 });
+            dfs(root, 0, []);
+            recordStep(`遍历完成！共找到 ${count} 条路径。`, {}, prefixMap);
+        }
+
+        // --- ANIMATION & UI CONTROL ---
+        function updateUI() {
+            if (currentStep < 0 || currentStep >= animationSteps.length) {
+                resetControls();
+                return;
+            }
+
+            const step = animationSteps[currentStep];
+            statusText.innerHTML = step.description;
+            
+            drawTree(treeRoot, step.highlights);
+
+            if (activeAlgorithm === 'prefix-sum' && step.mapState) {
+                prefixMapContainer.innerHTML = '';
+                Object.entries(step.mapState).forEach(([key, value]) => {
+                    if (value > 0) {
+                        const entry = document.createElement('div');
+                        entry.className = 'bg-white rounded px-2 py-1 shadow-sm';
+                        entry.textContent = `${key}: ${value}`;
+                        prefixMapContainer.appendChild(entry);
+                    }
+                });
+            }
+
+            prevBtn.disabled = currentStep === 0;
+            nextBtn.disabled = currentStep === animationSteps.length - 1;
+            playPauseBtn.disabled = currentStep === animationSteps.length - 1;
+        }
+
+        function play() {
+            if (timer) return; 
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            timer = setInterval(() => {
+                if (currentStep < animationSteps.length - 1) {
+                    currentStep++;
+                    updateUI();
+                } else {
+                    pause();
+                }
+            }, 1500);
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        }
+
+        function resetControls() {
+            pause();
+            currentStep = -1;
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            playPauseBtn.disabled = true;
+            statusText.textContent = '点击 "生成可视化" 开始。';
+        }
+
+        function startVisualization() {
+            pause();
+            
+            let treeData;
+            try {
+                const rawInput = treeInput.value.trim();
+                treeData = (rawInput === "") ? [] : JSON.parse(rawInput.replace(/null/g, 'null'));
+                if (!Array.isArray(treeData)) throw new Error();
+            } catch (e) {
+                statusText.textContent = '错误：无效的二叉树数组格式。请输入类似 [1,null,2,3] 的格式。';
+                return;
+            }
+
+            treeRoot = parseTree(treeData);
+            if (!treeRoot) {
+                treeSvg.innerHTML = '';
+                statusText.textContent = '空树，无需可视化。';
+                resetControls();
+                return;
+            }
+            const targetSum = parseInt(targetSumInput.value, 10);
+
+            if (activeAlgorithm === 'dfs') {
+                generateDfsSteps(treeRoot, targetSum);
+            } else {
+                generatePrefixSumSteps(treeRoot, targetSum);
+            }
+            
+            currentStep = 0;
+            updateUI();
+            playPauseBtn.disabled = false;
+        }
+
+        // --- EVENT LISTENERS ---
+        visualizeBtn.addEventListener('click', startVisualization);
+        
+        playPauseBtn.addEventListener('click', () => {
+            if (timer) {
+                pause();
+            } else {
+                play();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            pause();
+            if (currentStep < animationSteps.length - 1) {
+                currentStep++;
+                updateUI();
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            pause();
+            if (currentStep > 0) {
+                currentStep--;
+                updateUI();
+            }
+        });
+
+        // Tab switching
+        const tabs = document.querySelectorAll('.tab-btn');
+        const contents = {
+            'dfs': document.getElementById('content-dfs'),
+            'prefix-sum': document.getElementById('content-prefix-sum')
+        };
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('tab-active'));
+                tab.classList.add('tab-active');
+                
+                activeAlgorithm = tab.id.replace('tab-', '');
+                
+                Object.values(contents).forEach(c => c.classList.add('hidden'));
+                contents[activeAlgorithm].classList.remove('hidden');
+                
+                prefixSumViz.classList.toggle('hidden', activeAlgorithm !== 'prefix-sum');
+
+                resetControls();
+                treeSvg.innerHTML = '';
+                startVisualization(); 
+            });
+        });
+
+        // --- INITIALIZATION ---
+        function renderLatex() {
+            if (window.katex) {
+                document.querySelectorAll('span[class^="time-complexity"], span[class^="space-complexity"]').forEach(el => {
+                    try {
+                        katex.render(el.textContent, el, { throwOnError: false, displayMode: false });
+                    } catch (e) {
+                        console.error("Katex rendering error:", e);
+                    }
+                });
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const katexScript = document.querySelector('script[src*="katex"]');
+            if (katexScript.complete) {
+                renderLatex();
+            } else {
+                katexScript.onload = renderLatex;
+            }
+            startVisualization();
+        });
+
+    </script>
+</body>
+</html>

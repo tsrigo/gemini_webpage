@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二叉树最近公共祖先 (LCA) 可视化工具</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- D3.js for tree visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMckMnH3QxB9HsZapGGEc0v29H6CMXLMcuUjdPA3lrhAYM9zN" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+
+    <style>
+        /* Using Inter font for an Apple-like aesthetic */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f9fafb; /* Light gray background */
+            color: #1f2937; /* Dark gray text */
+        }
+
+        /* Custom styles for visualization elements */
+        .node circle {
+            stroke: #4b5563; /* Gray border */
+            stroke-width: 2px;
+            transition: fill 0.5s ease, stroke 0.5s ease;
+        }
+
+        .node text {
+            font-size: 14px;
+            font-weight: 500;
+            pointer-events: none;
+            fill: #1f2937;
+        }
+
+        .link {
+            fill: none;
+            stroke: #9ca3af; /* Lighter gray for links */
+            stroke-width: 2px;
+            transition: stroke 0.5s ease;
+        }
+
+        /* Highlighting styles */
+        .node.current > circle { fill: #60a5fa; stroke: #2563eb; } /* Blue for current */
+        .node.target > circle { fill: #facc15; stroke: #d97706; } /* Yellow for p and q */
+        .node.path > circle { fill: #a5b4fc; stroke: #6366f1; } /* Indigo for path */
+        .node.lca > circle { fill: #4ade80; stroke: #16a34a; } /* Green for LCA */
+        .link.path { stroke: #6366f1; stroke-width: 3px; }
+
+        /* Control button styles */
+        .control-btn {
+            background-color: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .control-btn:hover:not(:disabled) {
+            border-color: #9ca3af;
+            background-color: #f9fafb;
+        }
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Tab styles */
+        .tab {
+            cursor: pointer;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+        
+        /* KaTeX inline style fix */
+        .katex-display {
+            overflow: auto hidden; /* Allow horizontal scroll for long equations */
+        }
+        .katex {
+            white-space: nowrap;
+        }
+        .katex-inline {
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <main class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- Header Section -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">二叉树的最近公共祖先</h1>
+            <p class="mt-4 text-lg text-gray-600">一个用于理解 LeetCode 236 题的交互式可视化工具</p>
+        </header>
+
+        <!-- Input Section -->
+        <section id="input-section" class="mb-8 p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-2xl font-semibold mb-4">1. 输入数据</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div class="md:col-span-2">
+                    <label for="tree-input" class="block text-sm font-medium text-gray-700">树 (数组形式)</label>
+                    <input type="text" id="tree-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="[3,5,1,6,2,0,8,null,null,7,4]">
+                </div>
+                <div>
+                    <label for="p-input" class="block text-sm font-medium text-gray-700">节点 p</label>
+                    <input type="number" id="p-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="5">
+                </div>
+                <div>
+                    <label for="q-input" class="block text-sm font-medium text-gray-700">节点 q</label>
+                    <input type="number" id="q-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="4">
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button id="visualize-btn" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition">开始可视化</button>
+            </div>
+        </section>
+
+        <!-- Main Content: Visualization and Explanation -->
+        <div id="main-content" class="hidden">
+            <!-- Tabs for different methods -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav id="tabs" class="-mb-px flex justify-center space-x-8" aria-label="Tabs">
+                    <a href="#" class="tab active" data-method="recursive">递归 (后序遍历)</a>
+                    <a href="#" class="tab" data-method="parent-pointers">父指针 + 哈希集</a>
+                </nav>
+            </div>
+
+            <!-- Visualization Area -->
+            <section id="visualization-section" class="p-4 bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+                <h2 class="text-2xl font-semibold mb-2">2. 算法可视化</h2>
+                <div id="status-bar" class="h-12 flex items-center justify-center bg-gray-100 rounded-lg mb-4 text-gray-700 font-medium text-center px-4">请点击 "开始可视化" 以生成动画步骤。</div>
+                <div id="visualization-container" class="w-full min-h-[400px] flex items-center justify-center">
+                    <svg id="tree-svg" class="w-full h-full"></svg>
+                </div>
+                <div id="controls" class="flex justify-center items-center space-x-4 mt-4">
+                    <button id="prev-btn" class="control-btn">上一步</button>
+                    <button id="play-pause-btn" class="control-btn w-24">播放</button>
+                    <button id="next-btn" class="control-btn">下一步</button>
+                </div>
+                 <div id="parent-pointer-aux" class="mt-4 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-semibold text-center mb-2">父指针映射 (Parent Map)</h4>
+                            <div id="parent-map-display" class="p-2 bg-gray-50 rounded-md h-32 overflow-y-auto text-sm font-mono"></div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-center mb-2">p 的祖先集 (Ancestors of p)</h4>
+                            <div id="ancestor-set-display" class="p-2 bg-gray-50 rounded-md h-32 overflow-y-auto text-sm font-mono"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Explanation Section -->
+            <section id="explanation-section" class="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-2xl font-semibold mb-4">3. 算法讲解</h2>
+                <div id="explanation-content">
+                    <!-- Content will be dynamically inserted here -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const visualizeBtn = document.getElementById('visualize-btn');
+        const treeInput = document.getElementById('tree-input');
+        const pInput = document.getElementById('p-input');
+        const qInput = document.getElementById('q-input');
+        const mainContent = document.getElementById('main-content');
+        const svg = d3.select("#tree-svg");
+        const statusBar = document.getElementById('status-bar');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const tabs = document.getElementById('tabs');
+        const explanationContent = document.getElementById('explanation-content');
+        const parentPointerAux = document.getElementById('parent-pointer-aux');
+        const parentMapDisplay = document.getElementById('parent-map-display');
+        const ancestorSetDisplay = document.getElementById('ancestor-set-display');
+
+        // --- State Management ---
+        let state = {
+            tree: null,
+            p: null,
+            q: null,
+            animationSteps: [],
+            currentStep: -1,
+            isPlaying: false,
+            intervalId: null,
+            currentMethod: 'recursive'
+        };
+
+        // --- Explanations Data ---
+        const explanations = {
+            recursive: `
+                <h3 class="text-xl font-semibold mb-3">核心思想</h3>
+                <p class="mb-4 text-gray-700">
+                    此方法采用<strong>后序遍历</strong> (左-右-根) 的递归策略。对于任意一个节点 <code>root</code>，我们递归地在其左右子树中寻找节点 <code>p</code> 和 <code>q</code>。递归的返回值有三种情况：
+                </p>
+                <ul class="list-disc list-inside mb-4 space-y-2 text-gray-700">
+                    <li>如果找到了 <code>p</code> 或 <code>q</code>，则返回该节点。</li>
+                    <li>如果什么都没找到，则返回 <code>null</code>。</li>
+                    <li>如果一个节点的左子树返回了 <code>p</code>，右子树返回了 <code>q</code> (反之亦然)，那么这个节点就是最近公共祖先 (LCA)。</li>
+                </ul>
+                <p class="text-gray-700">
+                    这个过程从叶子节点开始，自底向上地将信息传递回来。第一个同时“看到”<code>p</code> 和 <code>q</code> 分布在自己两侧的节点，就是它们的LCA。
+                </p>
+
+                <h3 class="text-xl font-semibold mt-6 mb-3">步骤分解</h3>
+                <ol class="list-decimal list-inside mb-4 space-y-2 text-gray-700">
+                    <li><strong>递归基：</strong> 如果当前节点为空 (<code>null</code>)，或者当前节点就是 <code>p</code> 或 <code>q</code>，直接返回当前节点。</li>
+                    <li><strong>递归下降：</strong> 分别对当前节点的左子树和右子树调用递归函数，获取返回值 <code>left</code> 和 <code>right</code>。</li>
+                    <li><strong>结果判断 (后序位置)：</strong>
+                        <ul class="list-disc list-inside ml-6 mt-2 space-y-1">
+                            <li>如果 <code>left</code> 和 <code>right</code> 都不为空，说明 <code>p</code> 和 <code>q</code> 分居当前节点两侧，当前节点即为 LCA，返回当前节点。</li>
+                            <li>如果 <code>left</code> 不为空而 <code>right</code> 为空，说明 <code>p</code> 和 <code>q</code> 都在左子树，LCA 也必然在左子树，返回 <code>left</code>。</li>
+                            <li>如果 <code>right</code> 不为空而 <code>left</code> 为空，同理，返回 <code>right</code>。</li>
+                            <li>如果 <code>left</code> 和 <code>right</code> 都为空，说明此子树不包含 <code>p</code> 或 <code>q</code>，返回 <code>null</code>。</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3 class="text-xl font-semibold mt-6 mb-3">复杂度分析</h3>
+                <ul class="list-none mb-4 space-y-2 text-gray-700">
+                    <li><strong>时间复杂度:</strong> $O(N)$，其中 $N$ 是树中节点的数量。因为我们需要遍历每个节点一次。</li>
+                    <li><strong>空间复杂度:</strong> $O(H)$，其中 $H$ 是树的高度。这是递归调用栈所占用的空间。在最坏情况下 (链状树)，空间复杂度为 $O(N)$。</li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mt-6 mb-3">Python 代码示例</h3>
+                <pre><code class="language-python bg-gray-100 p-4 rounded-md block overflow-x-auto">
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, x):
+#         self.val = x
+#         self.left = None
+#         self.right = None
+
+class Solution:
+    def lowestCommonAncestor(self, root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
+        # Base case: if root is null, or root is p or q, we found it.
+        if not root or root == p or root == q:
+            return root
+
+        # Recursively search in left and right subtrees
+        left = self.lowestCommonAncestor(root.left, p, q)
+        right = self.lowestCommonAncestor(root.right, p, q)
+
+        # If both left and right are non-null, root is the LCA
+        if left and right:
+            return root
+        
+        # Otherwise, return the non-null one (or null if both are null)
+        return left if left else right
+                </code></pre>
+            `,
+            'parent-pointers': `
+                <h3 class="text-xl font-semibold mb-3">核心思想</h3>
+                <p class="mb-4 text-gray-700">
+                    该方法将问题转化为寻找两个链表的第一个交点。我们首先通过一次遍历，建立一个从子节点到父节点的映射关系 (<code>parent map</code>)。然后，我们从节点 <code>p</code> 开始，沿着父指针一路向上走到根节点，并将所有经过的祖先节点存入一个哈希集 (<code>HashSet</code>)。最后，我们从节点 <code>q</code> 开始，同样沿着父指针向上走，每经过一个节点，就检查它是否存在于之前构建的哈希集中。第一个在哈希集中找到的节点，就是 <code>p</code> 和 <code>q</code> 的最近公共祖先。
+                </p>
+
+                <h3 class="text-xl font-semibold mt-6 mb-3">步骤分解</h3>
+                <ol class="list-decimal list-inside mb-4 space-y-2 text-gray-700">
+                    <li><strong>建立父指针映射：</strong> 遍历整棵树 (可以使用 DFS 或 BFS)，用一个哈希表记录下每个节点的父节点。</li>
+                    <li><strong>收集 p 的祖先：</strong> 从节点 <code>p</code> 开始，不断访问其父节点，直到根节点。将路径上所有节点（包括 <code>p</code> 自身）添加到一个哈希集中。</li>
+                    <li><strong>寻找公共祖先：</strong> 从节点 <code>q</code> 开始，不断访问其父节点。对于路径上的每个节点（包括 <code>q</code>），检查它是否存在于 p 的祖先哈希集中。
+                        <ul class="list-disc list-inside ml-6 mt-2 space-y-1">
+                            <li>如果存在，该节点就是第一个公共祖先，即 LCA。立即返回该节点。</li>
+                            <li>如果不存在，继续向上移动。</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3 class="text-xl font-semibold mt-6 mb-3">复杂度分析</h3>
+                <ul class="list-none mb-4 space-y-2 text-gray-700">
+                    <li><strong>时间复杂度:</strong> $O(N)$。建立父指针映射需要遍历所有 $N$ 个节点。从 <code>p</code> 和 <code>q</code> 向上走到根节点的时间最多为 $O(H)$，其中 $H$ 是树的高度。所以总时间为 $O(N) + O(H) + O(H) = O(N)$。</li>
+                    <li><strong>空间复杂度:</strong> $O(N)$。父指针映射需要 $O(N)$ 的空间，<code>p</code> 的祖先哈希集最多需要 $O(H)$ 的空间。总空间复杂度为 $O(N)$。</li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mt-6 mb-3">Python 代码示例</h3>
+                <pre><code class="language-python bg-gray-100 p-4 rounded-md block overflow-x-auto">
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, x):
+#         self.val = x
+#         self.left = None
+#         self.right = None
+
+class Solution:
+    def lowestCommonAncestor(self, root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
+        parent_map = {root: None}
+        stack = [root]
+
+        # 1. Build parent pointers map
+        # We only need to find p and q, then we can stop building the map
+        while p not in parent_map or q not in parent_map:
+            node = stack.pop()
+            if node.left:
+                parent_map[node.left] = node
+                stack.append(node.left)
+            if node.right:
+                parent_map[node.right] = node
+                stack.append(node.right)
+        
+        # 2. Collect all ancestors of p
+        ancestors = set()
+        curr = p
+        while curr:
+            ancestors.add(curr)
+            curr = parent_map[curr]
+            
+        # 3. Find the first common ancestor from q's path
+        curr = q
+        while curr not in ancestors:
+            curr = parent_map[curr]
+            
+        return curr
+                </code></pre>
+            `
+        };
+
+        // --- Helper Functions ---
+        function buildTree(arr) {
+            if (!arr || arr.length === 0 || arr[0] === null) return null;
+            
+            const nodes = arr.map(val => val === null ? null : { val, left: null, right: null, id: `node-${val}` });
+            const queue = [nodes[0]];
+            let i = 1;
+
+            while (queue.length > 0 && i < nodes.length) {
+                const current = queue.shift();
+                if (current) {
+                    if (i < nodes.length && nodes[i] !== null) {
+                        current.left = nodes[i];
+                        queue.push(nodes[i]);
+                    }
+                    i++;
+                    if (i < nodes.length && nodes[i] !== null) {
+                        current.right = nodes[i];
+                        queue.push(nodes[i]);
+                    }
+                    i++;
+                }
+            }
+            return nodes[0];
+        }
+
+        function findNode(root, val) {
+            if (!root) return null;
+            if (root.val === val) return root;
+            return findNode(root.left, val) || findNode(root.right, val);
+        }
+
+        // --- Visualization Functions ---
+        function drawTree() {
+            svg.selectAll("*").remove();
+            if (!state.tree) return;
+
+            const container = document.getElementById('visualization-container');
+            const width = container.clientWidth;
+            
+            // Calculate tree depth to determine required height
+            const rootHierarchy = d3.hierarchy(state.tree, d => [d.left, d.right].filter(Boolean));
+            const depth = rootHierarchy.height;
+            // Allocate 100px per level, with a minimum height of 400px.
+            const requiredHeight = (depth + 1) * 100;
+            const height = Math.max(400, requiredHeight);
+            
+            // Set the SVG element's height dynamically
+            svg.attr("height", height);
+            
+            // Use the dynamic height for the layout
+            const treeLayout = d3.tree().size([width - 80, height - 80]);
+            const treeData = treeLayout(rootHierarchy);
+
+            const g = svg.append("g").attr("transform", "translate(40, 40)");
+
+            // Draw links
+            g.selectAll(".link")
+                .data(treeData.links())
+                .enter().append("path")
+                .attr("class", "link")
+                .attr("d", d3.linkVertical()
+                    .x(d => d.x)
+                    .y(d => d.y));
+
+            // Draw nodes
+            const node = g.selectAll(".node")
+                .data(treeData.descendants())
+                .enter().append("g")
+                .attr("class", d => `node ${d.data.val === state.p.val || d.data.val === state.q.val ? 'target' : ''}`)
+                .attr("id", d => d.data.id)
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+
+            node.append("circle").attr("r", 20).attr("fill", "#fff");
+            node.append("text")
+                .attr("dy", ".35em")
+                .attr("text-anchor", "middle")
+                .text(d => d.data.val);
+        }
+        
+        function updateVisualization(step) {
+            if (!step) return;
+            
+            // Reset all highlights
+            svg.selectAll('.node').attr('class', d => `node ${d.data.val === state.p.val || d.data.val === state.q.val ? 'target' : ''}`);
+            svg.selectAll('.link').attr('class', 'link');
+            
+            // Apply new highlights
+            if (step.highlights) {
+                for (const [nodeId, className] of Object.entries(step.highlights)) {
+                    svg.select(`#node-${nodeId}`).classed(className, true);
+                }
+            }
+            if (step.linkHighlights) {
+                 const links = svg.selectAll('.link').data();
+                 svg.selectAll('.link').each(function(d) {
+                    const sourceId = d.source.data.val;
+                    const targetId = d.target.data.val;
+                    if(step.linkHighlights.some(lh => (lh.source === sourceId && lh.target === targetId) || (lh.source === targetId && lh.target === sourceId))) {
+                        d3.select(this).classed('path', true);
+                    }
+                 });
+            }
+
+            statusBar.textContent = step.message;
+
+            // Update auxiliary displays for parent-pointer method
+            if (state.currentMethod === 'parent-pointers') {
+                parentMapDisplay.innerHTML = step.parentMap ? Object.entries(step.parentMap).map(([child, parent]) => `<div>${child}: ${parent}</div>`).join('') : '';
+                ancestorSetDisplay.innerHTML = step.ancestorSet ? [...step.ancestorSet].map(val => `<div>${val}</div>`).join('') : '';
+            }
+        }
+
+
+        // --- Animation Logic ---
+        function generateSteps() {
+            state.animationSteps = [];
+            state.currentStep = -1;
+            
+            if (state.currentMethod === 'recursive') {
+                generateRecursiveSteps();
+            } else if (state.currentMethod === 'parent-pointers') {
+                generateParentPointerSteps();
+            }
+            
+            updateControls();
+            if (state.animationSteps.length > 0) {
+                state.currentStep = 0;
+                renderCurrentStep();
+            }
+        }
+
+        function generateRecursiveSteps() {
+            const steps = [];
+            const pVal = state.p.val;
+            const qVal = state.q.val;
+
+            function lcaRecursive(node) {
+                if (!node) {
+                    steps.push({
+                        message: `到达空节点 (null)，返回 null。`,
+                        highlights: {}
+                    });
+                    return null;
+                }
+
+                const highlights = { [node.val]: 'current' };
+                steps.push({
+                    message: `当前检查节点 ${node.val}。`,
+                    highlights: { ...highlights }
+                });
+
+                if (node.val === pVal || node.val === qVal) {
+                    steps.push({
+                        message: `节点 ${node.val} 是 p 或 q，返回节点 ${node.val}。`,
+                        highlights: { ...highlights, [node.val]: 'lca' }
+                    });
+                    return node;
+                }
+
+                steps.push({ message: `递归搜索 ${node.val} 的左子树。`, highlights: { ...highlights } });
+                const left = lcaRecursive(node.left);
+                
+                steps.push({
+                    message: `左子树搜索完毕，返回 ${left ? '节点 ' + left.val : 'null'}。现在递归搜索 ${node.val} 的右子树。`,
+                    highlights: { ...highlights, ...(left && { [left.val]: 'path' }) }
+                });
+                const right = lcaRecursive(node.right);
+
+                steps.push({
+                    message: `右子树搜索完毕，返回 ${right ? '节点 ' + right.val : 'null'}。`,
+                    highlights: { ...highlights, ...(left && { [left.val]: 'path' }), ...(right && { [right.val]: 'path' }) }
+                });
+
+                if (left && right) {
+                    steps.push({
+                        message: `节点 ${node.val} 的左右子树分别找到了 p 和 q。所以 ${node.val} 是LCA！返回节点 ${node.val}。`,
+                        highlights: { [node.val]: 'lca', [left.val]: 'path', [right.val]: 'path' }
+                    });
+                    return node;
+                }
+                
+                const result = left || right;
+                steps.push({
+                    message: `节点 ${node.val} 的子树中只找到一个目标或没找到。返回 ${result ? '节点 ' + result.val : 'null'}。`,
+                    highlights: { ...highlights, ...(result && { [result.val]: 'path' }) }
+                });
+                return result;
+            }
+
+            const lcaNode = lcaRecursive(state.tree);
+            steps.push({
+                message: `算法结束。最近公共祖先是节点 ${lcaNode.val}。`,
+                highlights: { [lcaNode.val]: 'lca' }
+            });
+            state.animationSteps = steps;
+        }
+
+        function generateParentPointerSteps() {
+            const steps = [];
+            const parentMap = {};
+            const pVal = state.p.val;
+            const qVal = state.q.val;
+            
+            // Phase 1: Build Parent Map
+            steps.push({ message: '阶段 1: 建立父指针映射。', highlights: {}, parentMap: {}, ancestorSet: [] });
+            const queue = [state.tree];
+            const visitedForMap = new Set();
+            while(queue.length > 0) {
+                const node = queue.shift();
+                if (node && !visitedForMap.has(node.val)) {
+                    visitedForMap.add(node.val);
+                    const currentHighlights = { [node.val]: 'current' };
+                    if (node.left) {
+                        parentMap[node.left.val] = node.val;
+                        queue.push(node.left);
+                    }
+                    if (node.right) {
+                        parentMap[node.right.val] = node.val;
+                        queue.push(node.right);
+                    }
+                    steps.push({
+                        message: `遍历节点 ${node.val}，更新父指针映射。`,
+                        highlights: currentHighlights,
+                        parentMap: { ...parentMap },
+                        ancestorSet: []
+                    });
+                }
+            }
+            steps.push({ message: '父指针映射建立完毕。', highlights: {}, parentMap: { ...parentMap }, ancestorSet: [] });
+
+            // Phase 2: Collect ancestors of p
+            steps.push({ message: `阶段 2: 从节点 ${pVal} 开始，收集所有祖先。`, highlights: {}, parentMap: { ...parentMap }, ancestorSet: [] });
+            const ancestorSet = new Set();
+            let currVal = pVal;
+            const pathP = {};
+            while(currVal !== undefined) {
+                ancestorSet.add(currVal);
+                pathP[currVal] = 'path';
+                steps.push({
+                    message: `将节点 ${currVal} 加入 p 的祖先集。`,
+                    highlights: { ...pathP, [currVal]: 'current' },
+                    parentMap: { ...parentMap },
+                    ancestorSet: new Set(ancestorSet)
+                });
+                currVal = parentMap[currVal];
+            }
+            steps.push({ message: 'p 的祖先集收集完毕。', highlights: { ...pathP }, parentMap: { ...parentMap }, ancestorSet: new Set(ancestorSet) });
+            
+            // Phase 3: Find common ancestor from q
+            steps.push({ message: `阶段 3: 从节点 ${qVal} 开始向上查找，直到找到 p 的祖先。`, highlights: { ...pathP }, parentMap: { ...parentMap }, ancestorSet: new Set(ancestorSet) });
+            currVal = qVal;
+            while(!ancestorSet.has(currVal)) {
+                 steps.push({
+                    message: `检查节点 ${currVal}。它不在 p 的祖先集中，继续向上。`,
+                    highlights: { ...pathP, [currVal]: 'current' },
+                    parentMap: { ...parentMap },
+                    ancestorSet: new Set(ancestorSet)
+                });
+                currVal = parentMap[currVal];
+            }
+
+            steps.push({
+                message: `检查节点 ${currVal}。它在 p 的祖先集中！节点 ${currVal} 是LCA！`,
+                highlights: { ...pathP, [currVal]: 'lca' },
+                parentMap: { ...parentMap },
+                ancestorSet: new Set(ancestorSet)
+            });
+            state.animationSteps = steps;
+        }
+
+
+        function renderCurrentStep() {
+            if (state.currentStep < 0 || state.currentStep >= state.animationSteps.length) return;
+            const step = state.animationSteps[state.currentStep];
+            updateVisualization(step);
+            updateControls();
+        }
+
+        function updateControls() {
+            prevBtn.disabled = state.currentStep <= 0;
+            nextBtn.disabled = state.currentStep >= state.animationSteps.length - 1;
+            playPauseBtn.disabled = state.currentStep >= state.animationSteps.length - 1;
+            playPauseBtn.textContent = state.isPlaying ? '暂停' : '播放';
+        }
+
+        function play() {
+            if (state.isPlaying || state.currentStep >= state.animationSteps.length - 1) return;
+            state.isPlaying = true;
+            updateControls();
+            state.intervalId = setInterval(() => {
+                if (state.currentStep < state.animationSteps.length - 1) {
+                    state.currentStep++;
+                    renderCurrentStep();
+                } else {
+                    pause();
+                }
+            }, 1500);
+        }
+
+        function pause() {
+            state.isPlaying = false;
+            clearInterval(state.intervalId);
+            state.intervalId = null;
+            updateControls();
+        }
+
+        function next() {
+            pause();
+            if (state.currentStep < state.animationSteps.length - 1) {
+                state.currentStep++;
+                renderCurrentStep();
+            }
+        }
+
+        function prev() {
+            pause();
+            if (state.currentStep > 0) {
+                state.currentStep--;
+                renderCurrentStep();
+            }
+        }
+        
+        function switchTab(method) {
+            state.currentMethod = method;
+            
+            // Update tab appearance
+            tabs.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tabs.querySelector(`[data-method="${method}"]`).classList.add('active');
+
+            // Update explanation content
+            explanationContent.innerHTML = explanations[method];
+            
+            // Re-render math on the whole body, as new content with formulas has been added.
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ]
+                });
+            }
+
+            // Show/hide auxiliary display
+            parentPointerAux.style.display = method === 'parent-pointers' ? 'block' : 'none';
+
+            // Regenerate steps for the new method
+            if (state.tree) {
+                generateSteps();
+            }
+        }
+
+        // --- Event Listeners ---
+        visualizeBtn.addEventListener('click', () => {
+            try {
+                const arrStr = treeInput.value.replace(/null/g, 'null').replace(/ /g, '');
+                const arr = JSON.parse(arrStr);
+                const pVal = parseInt(pInput.value, 10);
+                const qVal = parseInt(qInput.value, 10);
+
+                if (isNaN(pVal) || isNaN(qVal)) {
+                    throw new Error("p 或 q 的值无效。");
+                }
+
+                state.tree = buildTree(arr);
+                if (!state.tree) throw new Error("无效的树数组输入。");
+
+                state.p = findNode(state.tree, pVal);
+                state.q = findNode(state.tree, qVal);
+
+                if (!state.p || !state.q) {
+                    throw new Error("在树中找不到节点 p 或 q。");
+                }
+                
+                mainContent.classList.remove('hidden');
+                drawTree();
+                generateSteps();
+
+            } catch (e) {
+                statusBar.textContent = `错误: ${e.message}`;
+                statusBar.classList.add('text-red-600');
+                console.error(e);
+            }
+        });
+
+        tabs.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tab = e.target.closest('.tab');
+            if (tab && !tab.classList.contains('active')) {
+                switchTab(tab.dataset.method);
+            }
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            if (state.isPlaying) {
+                pause();
+            } else {
+                play();
+            }
+        });
+        nextBtn.addEventListener('click', next);
+        prevBtn.addEventListener('click', prev);
+        
+        // --- Initial Setup ---
+        switchTab('recursive'); // Set initial tab and content
+    });
+    </script>
+</body>
+</html>

@@ -20,7 +20,6 @@
 ├── index.html             # 主页文件（GitHub Pages）
 ├── index_template.html    # 主页模板文件
 ├── update_index.py        # 自动更新脚本
-├── server.py              # Python HTTP 服务器脚本（本地开发）
 ├── paper/                 # 论文 HTML 文件目录
 │   ├── Asymmetry of verification and verifier's law.html
 │   ├── CODEIO.html
@@ -105,32 +104,18 @@
 - Python 3.6 或更高版本
 - 确保文件夹中包含您的 HTML 文件
 
-### 启动服务器
+### 本地预览
 
 1. **打开终端/命令提示符**
 2. **导航到项目目录**
    ```bash
    cd "D:\Documents\Gemini生成的网页"
    ```
-3. **运行服务器**
-   ```bash
-   python server.py
-   ```
-4. **访问网页**
-   - 服务器会自动寻找可用端口（从 8000 开始）
-   - 在浏览器中打开显示的地址，例如：`http://localhost:8000`
-
-### 停止服务器
-
-- 在运行服务器的终端中按 `Ctrl + C`
-- 或关闭终端窗口
+3. **直接打开 index.html**
+   - 双击 `index.html` 文件
+   - 或在浏览器中打开 `file:///path/to/index.html`
 
 ## 功能说明
-
-### 自动端口检测
-- 服务器会自动从端口 8000 开始检测可用端口
-- 如果端口被占用，会自动递增到下一个可用端口
-- 启动时会显示实际使用的端口号
 
 ### 多文件夹动态扫描
 - 自动扫描所有文件夹中的所有 `.html` 文件
@@ -146,8 +131,8 @@
 - 其他文件夹 → 首字母大写的文件夹名
 
 ### 文件访问
-- 主页面：`http://localhost:端口号/` 或 GitHub Pages URL
-- 内容页面：`http://localhost:端口号/文件夹名/文件名.html`
+- 主页面：直接打开 `index.html` 或 GitHub Pages URL
+- 内容页面：点击卡片链接访问具体内容
 
 ## 添加新内容
 
@@ -164,10 +149,8 @@
 
 ## 自定义配置
 
-### 修改端口范围
-编辑 `server.py` 中的 `find_available_port(start_port=8000)` 来更改起始端口。
-
 ### 修改文件夹显示名称
+
 编辑 `update_index.py` 中的 `folder_display_names` 字典来更改文件夹的显示名称。
 
 ### 修改设计样式
@@ -189,13 +172,7 @@
 - 确保 Python 版本为 3.6+
 - 检查文件编码是否为 UTF-8
 
-**Q: 服务器启动失败**
-- 检查 Python 是否正确安装：`python --version`
-- 确保在正确的目录中运行脚本
 
-**Q: 端口被占用**
-- 服务器会自动寻找下一个可用端口
-- 查看终端输出中的实际端口号
 
 **Q: 页面显示空白**
 - 检查文件夹是否存在且包含 HTML 文件
@@ -217,7 +194,6 @@
 
 ## 技术栈
 
-- **后端**: Python 3.6+ (http.server, socketserver)
 - **前端**: HTML5, CSS3, JavaScript
 - **设计**: 苹果官网风格，响应式布局
 - **部署**: GitHub Pages 静态托管
@@ -233,6 +209,5 @@
 ---
 
 **注意**: 
-- 本地开发使用 `server.py`，部署到 GitHub Pages 使用 `index.html`
 - 添加新内容后记得运行 `python update_index.py` 更新主页
-- GitHub Pages 是静态托管，不支持 Python 服务器功能 
+- GitHub Pages 是静态托管，直接打开 `index.html` 即可预览 
