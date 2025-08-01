@@ -105,7 +105,6 @@ your-repo/
 ├── index.html              # 主页文件
 ├── index_template.html     # 主页模板
 ├── update_index.py         # 更新脚本
-├── server.py              # 本地开发服务器
 ├── README.md              # 项目说明
 ├── DEPLOYMENT.md          # 部署指南
 ├── paper/                 # 论文文件夹

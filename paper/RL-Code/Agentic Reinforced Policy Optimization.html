@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Reinforced Policy Optimization (ARPO) 论文深度解析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMcAgscc9PU4bv//BCYCwExFOp4r6AEFN2GIU2NVBESfUGR6p" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Helvetica Neue', 'Arial', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f9fafb;
+            color: #111827;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .apple-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+        }
+        .section-title {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #1d1d1f;
+            margin-bottom: 2rem;
+        }
+        .section-subtitle {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        .content-card {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.1);
+        }
+        .katex-display {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+        }
+        .inline-katex .katex {
+            padding: 0 0.2em;
+        }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+        .tab-button.active {
+            background-color: #0071e3;
+            color: white;
+        }
+        .tab-button:not(.active) {
+            background-color: #e8e8ed;
+            color: #1d1d1f;
+        }
+        .reviewer-comment-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0071e3;
+            margin-bottom: 0.5rem;
+        }
+        .pro-con-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        .timeline {
+            position: relative;
+            padding: 1rem 0;
+        }
+        .timeline:before {
+            content: '';
+            position: absolute;
+            left: 18px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 2rem;
+            padding-left: 40px;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0071e3;
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 1.25rem;
+            border: 4px solid #f9fafb;
+            transform: translateX(-50%);
+            left: 20px;
+        }
+        .timeline-content {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .pro-con-grid {
+                grid-template-columns: 1fr;
+            }
+            .section-title {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 apple-header border-b border-gray-200">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-[#0071e3]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                    </div>
+                    <div class="hidden md:block">
+                        <div class="ml-10 flex items-baseline space-x-4">
+                            <a href="#motivation" class="text-gray-700 hover:text-[#0071e3] px-3 py-2 rounded-md text-sm font-medium">研究动机</a>
+                            <a href="#inspiration" class="text-gray-700 hover:text-[#0071e3] px-3 py-2 rounded-md text-sm font-medium">灵感溯源</a>
+                            <a href="#math-model" class="text-gray-700 hover:text-[#0071e3] px-3 py-2 rounded-md text-sm font-medium">数学建模</a>
+                            <a href="#arpo-core" class="text-gray-700 hover:text-[#0071e3] px-3 py-2 rounded-md text-sm font-medium">核心机制</a>
+                            <a href="#experiments" class="text-gray-700 hover:text-[#0071e3] px-3 py-2 rounded-md text-sm font-medium">实验</a>
+                            <a href="#results" class="text-gray-700 hover:text-[#0071e3] px-3 py-2 rounded-md text-sm font-medium">结果与结论</a>
+                            <a href="#review" class="text-gray-700 hover:text-[#0071e3] px-3 py-2 rounded-md text-sm font-medium">我的评论</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+        <!-- Title Section -->
+        <section class="text-center my-16">
+            <h1 class="text-5xl md:text-7xl font-bold tracking-tighter text-[#1d1d1f]">Agentic Reinforced Policy Optimization</h1>
+            <p class="mt-4 text-xl md:text-2xl text-gray-500">一篇关于智能体强化学习的论文深度解析</p>
+            <p class="mt-2 text-sm text-gray-400">Guanting Dong, et al. | Kuaishou Technology & Renmin University of China</p>
+        </section>
+
+        <!-- Motivation Section -->
+        <section id="motivation" class="my-24 scroll-mt-24">
+            <h2 class="section-title text-center">研究动机：为何需要 ARPO？</h2>
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div class="content-card">
+                    <h3 class="section-subtitle">发现的问题</h3>
+                    <p class="text-lg text-gray-600 leading-relaxed">
+                        现有的大语言模型 (LLM) 在单轮次推理任务中表现出色，但现实世界的问题往往需要模型作为“智能体”(Agent)，与外部工具（如搜索引擎、代码解释器）进行多轮次的动态交互。
+                        <br><br>
+                        当前的强化学习 (RL) 算法，如 GRPO，通常采用“轨迹级”(Trajectory-level) 的优化方式。它们将整个工具调用和推理过程视为一个完整的序列进行采样和奖励，这忽略了智能体与环境交互的“步骤级”(Step-level) 细节。这种粗粒度的优化方式，难以平衡模型的长程规划能力和精细的工具交互技巧。
+                    </p>
+                </div>
+                <div class="content-card">
+                    <h3 class="section-subtitle">核心洞察与意义</h3>
+                    <p class="text-lg text-gray-600 leading-relaxed">
+                        通过初步实验，作者发现了一个关键现象：当 LLM 与外部工具交互后，其生成后续内容的“不确定性”会显著增加。这种不确定性可以通过生成 token 的<strong>熵 (Entropy)</strong>来量化。
+                        <br><br>
+                        如论文 Figure 1 左图所示，每次工具调用 (Tool-call) 后，token 的熵分布都会出现一个高峰。这表明，外部信息给模型带来了新的可能性和“思考空间”，但也带来了决策的“迷茫”。
+                        <br><br>
+                        <strong>研究意义：</strong> 这一发现揭示了传统 RL 算法的短板——它们未能有效探索这些高不确定性、高信息量的决策点。因此，亟需一种新的 Agentic RL 算法，能够智能地在这些关键步骤上进行更深入的探索，从而更高效地学习如何使用工具。
+                    </p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Inspiration Section -->
+        <section id="inspiration" class="my-24 scroll-mt-24">
+            <h2 class="section-title text-center">灵感溯源：ARPO 的思想火花是如何产生的？</h2>
+            <div class="content-card">
+                 <p class="text-center text-xl text-gray-600 max-w-3xl mx-auto mb-12">
+                    一个好的研究工作往往源于对问题的深刻洞察和清晰的逻辑推演。我们可以尝试还原作者构思 ARPO 的心路历程：
+                </p>
+                <div class="timeline">
+                    <!-- Step 1 -->
+                    <div class="timeline-item">
+                        <div class="timeline-dot">1</div>
+                        <div class="timeline-content">
+                            <h3 class="section-subtitle text-xl">第一步：定义宏大问题</h3>
+                            <p class="text-gray-600"><strong>问题：</strong> 如何让 LLM Agent 更好地学习使用工具？现有的 RL 方法（如 PPO/GRPO）虽然在单步推理上有效，但它们是为通用场景设计的，并非为“Agent-环境”这种多轮动态交互模式量身定做。</p>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="timeline-item">
+                        <div class="timeline-dot">2</div>
+                        <div class="timeline-content">
+                            <h3 class="section-subtitle text-xl">第二步：寻找可量化的信号</h3>
+                            <p class="text-gray-600"><strong>思考：</strong> 为什么现有方法不够好？因为它们“一视同仁”地对待整个推理轨迹。但在 Agent 的决策流中，并非每一步都同等重要。“接收到工具返回结果”的时刻，显然是一个关键决策点。如何量化这个“关键性”？在 RL 和信息论中，<strong>不确定性 (Uncertainty)</strong> 是一个完美的候选指标。而衡量不确定性的最佳工具就是 <strong>熵 (Entropy)</strong>。</p>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="timeline-item">
+                        <div class="timeline-dot">3</div>
+                        <div class="timeline-content">
+                            <h3 class="section-subtitle text-xl">第三步：提出假设并验证（“尤里卡”时刻）</h3>
+                            <p class="text-gray-600"><strong>假设：</strong> 在 LLM Agent 与工具交互的关键节点（即工具调用后），其内部状态的不确定性会显著变化。
+                            <br><br>
+                            <strong>验证：</strong> 设计一个初步实验，让 Agent 执行任务，并实时监测其生成每个 token 的熵。实验结果（如论文 Figure 1）完美验证了假设：每次工具调用后，都出现了一个明显的<strong>熵增高峰</strong>。
+                            <br><br>
+                            <strong>这是整个研究的“尤里卡”时刻！</strong> 它提供了一个具体、可观测的现象，将宏大问题聚焦到了一个可操作的点上。
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Step 4 -->
+                    <div class="timeline-item">
+                        <div class="timeline-dot">4</div>
+                        <div class="timeline-content">
+                            <h3 class="section-subtitle text-xl">第四步：基于洞察设计核心机制</h3>
+                            <p class="text-gray-600"><strong>洞察：</strong> 熵高峰意味着模型在此刻面临多种选择，是最需要探索、最有可能学到新知识的地方。
+                            <br><br>
+                            <strong>设计：</strong> 与其浪费算力在低熵（确定性高）的路径上，不如将探索资源集中在高熵的“岔路口”。于是，<strong>“熵引导的自适应部署” (Entropy-based Adaptive Rollout)</strong> 机制应运而生。当检测到熵增超过阈值时，就在该点进行“分支”探索。
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Step 5 -->
+                    <div class="timeline-item">
+                        <div class="timeline-dot">5</div>
+                        <div class="timeline-content">
+                            <h3 class="section-subtitle text-xl">第五步：解决新机制带来的衍生问题</h3>
+                            <p class="text-gray-600"><strong>新问题：</strong> 自适应分支产生了树状的采样轨迹，如何为这些有共享前缀的轨迹分配合理的奖励/优势值？
+                            <br><br>
+                            <strong>解决方案：</strong> 探索了两种方式。一种是“硬性”地对共享部分求平均优势。另一种更优雅的方式是“柔性”的，作者敏锐地发现，GRPO 算法通过其重要性采样率 <span class="inline-katex">r_{i,t}(\theta)</span> 的设计，已经能够隐式地处理这种情况。共享前缀的 <span class="inline-katex">r_{i,t}(\theta)</span> 相同，其梯度更新自然会受到所有后续分支的共同影响。这便构成了 <strong>“优势归因估计” (Advantage Attribution Estimation)</strong>。
+                            </p>
+                        </div>
+                    </div>
+                     <!-- Step 6 -->
+                    <div class="timeline-item">
+                        <div class="timeline-dot">6</div>
+                        <div class="timeline-content">
+                            <h3 class="section-subtitle text-xl">第六步：完善理论并完成闭环</h3>
+                            <p class="text-gray-600"><strong>升华：</strong> 整个想法感觉很直观，但能否从理论上站住脚？将轨迹按工具调用点切分成段落，其实就是定义了“宏观动作”(Macro Action)。这与 RL 中的时序抽象思想不谋而合。通过将此思想推广到 Transformer 架构，作者提出了 <strong>“广义策略梯度定理” (GPG Theorem)</strong>，为整个算法提供了坚实的理论基础，完成了从现象观察到理论创新的完美闭环。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mathematical Modeling Section -->
+        <section id="math-model" class="my-24 scroll-mt-24">
+            <h2 class="section-title text-center">数学表示及建模</h2>
+            <div class="content-card space-y-8">
+                <div>
+                    <h3 class="section-subtitle">Agentic 强化学习目标</h3>
+                    <p class="text-lg text-gray-600 mb-4">
+                        Agentic RL 的目标是最大化一个结合了奖励函数和 KL 散度的目标函数。这个目标函数旨在让策略模型 <span class="inline-katex">\pi_{\theta}</span> 在模仿参考模型 <span class="inline-katex">\pi_{ref}</span> 的同时，最大化从奖励模型 <span class="inline-katex">r_{\phi}</span> 中获得的奖励。
+                    </p>
+                    <div class="katex-display">
+                        $$
+                        \max_{\theta} \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi_{\theta}(\cdot|x;T)} [r_{\phi}(x,y)] - \beta \mathbb{D}_{KL}[\pi_{\theta}(y|x;T) || \pi_{ref}(y|x;T)]
+                        $$
+                    </div>
+                    <p class="mt-4 text-gray-500">
+                        其中 <span class="inline-katex">T</span> 代表可用工具集，<span class="inline-katex">x</span> 是输入，<span class="inline-katex">y</span> 是包含工具调用和模型推理的完整输出，<span class="inline-katex">\beta</span> 是 KL 散度的权重系数。
+                    </p>
+                </div>
+                
+                <div>
+                    <h3 class="section-subtitle">Token 熵的计算</h3>
+                    <p class="text-lg text-gray-600 mb-4">
+                        为了量化模型在生成某个 token 时的不确定性，论文使用了标准的信息熵计算公式。在时间步 <span class="inline-katex">t</span>，token 生成的熵 <span class="inline-katex">H_t</span> 定义为：
+                    </p>
+                    <div class="katex-display">
+                        $$
+                        H_{t} = -\sum_{j=1}^{V} p_{t,j} \log p_{t,j}
+                        $$
+                    </div>
+                    <p class="mt-4 text-gray-500">
+                        这里的 <span class="inline-katex">V</span> 是词汇表大小，<span class="inline-katex">p_{t,j}</span> 是在时间步 <span class="inline-katex">t</span> 生成第 <span class="inline-katex">j</span> 个 token 的概率，它由模型 logits 经过 Softmax 函数得到。高熵意味着模型对下一个 token 的选择分布更均匀，即不确定性更高。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ARPO Core Mechanism Section -->
+        <section id="arpo-core" class="my-24 scroll-mt-24">
+            <h2 class="section-title text-center">ARPO 核心机制</h2>
+            <p class="text-center text-xl text-gray-600 max-w-3xl mx-auto mb-12">
+                ARPO 的核心在于两大创新设计：熵引导的自适应部署 (Entropy-based Adaptive Rollout) 和优势归因估计 (Advantage Attribution Estimation)。
+            </p>
+            <div class="content-card">
+                <div id="tabs-container" class="flex justify-center mb-8 space-x-2">
+                    <button class="tab-button active" onclick="showTab('rollout')">自适应部署</button>
+                    <button class="tab-button" onclick="showTab('advantage')">优势归因</button>
+                </div>
+                <div id="tab-content">
+                    <!-- Tab 1: Adaptive Rollout -->
+                    <div id="rollout" class="tab-panel">
+                        <div class="grid md:grid-cols-2 gap-8 items-center">
+                            <div>
+                                <h3 class="section-subtitle">熵引导的自适应部署</h3>
+                                <p class="text-lg text-gray-600 leading-relaxed">
+                                    这是 ARPO 的关键。传统 RL 算法对每个问题都生成若干条完整的轨迹，而 ARPO 更加智能：
+                                </p>
+                                <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-600 text-lg">
+                                    <li><strong>初始化:</strong> 先进行少量全局采样，并记录初始 token 的熵 <span class="inline-katex">H_{initial}</span>。</li>
+                                    <li><strong>熵变监控:</strong> 在每次工具调用后，计算新生成 token 的熵 <span class="inline-katex">H_t</span>，并计算归一化的熵变化 <span class="inline-katex">\Delta H_t = \text{Normalize}(H_t - H_{initial})</span>。</li>
+                                    <li><strong>自适应分支:</strong> 定义一个分支概率 <span class="inline-katex">P_t = \alpha + \beta \cdot \Delta H_t</span>。如果 <span class="inline-katex">P_t</span> 超过某个阈值 <span class="inline-katex">\tau</span>，说明此处不确定性高、探索价值大，就在当前节点进行“分支”(Branch)，生成多条新的局部推理路径。否则，继续沿原路径生成。</li>
+                                </ol>
+                                <p class="mt-4 text-lg text-gray-600 leading-relaxed">
+                                    这种机制使得 ARPO 能将计算资源集中在最有探索价值的“岔路口”，动态地平衡全局探索和局部精细化探索。
+                                </p>
+                            </div>
+                            <div class="p-4 bg-gray-100 rounded-lg">
+                                <p class="text-center font-semibold text-gray-700">[论文 Figure 4(a) 占位符: 熵引导的自适应光束法示意图]</p>
+                                <img src="https://placehold.co/600x400/e2e8f0/4a5568?text=Entropy-based+Adaptive+Beaming" alt="熵引导的自适应光束法示意图" class="w-full h-auto rounded-lg mt-4">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tab 2: Advantage Attribution -->
+                    <div id="advantage" class="tab-panel hidden">
+                         <div class="grid md:grid-cols-2 gap-8 items-center">
+                            <div>
+                                <h3 class="section-subtitle">优势归因估计</h3>
+                                <p class="text-lg text-gray-600 leading-relaxed">
+                                    自适应部署产生了包含“共享路径”和“分支路径”的轨迹树。如何为这些路径上的 token 分配奖励（或优势值 Advantage）就成了新问题。ARPO 探讨了两种策略：
+                                </p>
+                                <ul class="list-disc list-inside mt-4 space-y-2 text-gray-600 text-lg">
+                                    <li><strong>硬性估计 (Hard Estimation):</strong> 对分支出来的独立路径，计算各自的优势值。对于它们共享的前缀路径，其优势值取所有共享该前缀的分支路径优势值的平均。</li>
+                                    <li><strong>柔性估计 (Soft Estimation):</strong> 论文发现，直接使用 GRPO 的优化目标就能隐式地实现类似的效果。因为对于共享的前缀，它们的重要性采样率 <span class="inline-katex">r_{i,t}(\theta)</span> 是相同的，在梯度更新时，其受到的影响自然是所有后续分支的“综合体现”。实验证明，柔性估计效果更好、更稳定。</li>
+                                </ul>
+                                <p class="mt-4 text-lg text-gray-600 leading-relaxed">
+                                    通过这种方式，ARPO 能让模型更精细地理解每一步决策的好坏，尤其是在关键的分支点上。
+                                </p>
+                            </div>
+                            <div class="p-4 bg-gray-100 rounded-lg">
+                                <p class="text-center font-semibold text-gray-700">[论文 Figure 4(b) 占位符: 带有优势归因的自适应部署示意图]</p>
+                                <img src="https://placehold.co/600x400/e2e8f0/4a5568?text=Adaptive+Rollout+with+Advantage+Attribution" alt="带有优势归因的自适应部署示意图" class="w-full h-auto rounded-lg mt-4">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Experiments Section -->
+        <section id="experiments" class="my-24 scroll-mt-24">
+            <h2 class="section-title text-center">实验方法与设计</h2>
+            <div class="content-card space-y-8">
+                <div>
+                    <h3 class="section-subtitle">模型、数据与任务</h3>
+                    <p class="text-lg text-gray-600">
+                        为了充分验证 ARPO 的效果，实验覆盖了多种模型、数据集和任务类型，力求全面和可复现。
+                    </p>
+                    <ul class="mt-4 space-y-4 text-gray-600">
+                        <li><strong>基础模型 (Backbone Models):</strong> Qwen2.5 (3B, 7B), Llama3.1 (8B), Qwen3 (8B, 14B)。</li>
+                        <li><strong>任务领域:</strong>
+                            <ul class="list-disc list-inside ml-4 mt-2">
+                                <li><strong>数学推理:</strong> AIME2024, AIME2025, MATH500, GSM8K, MATH。</li>
+                                <li><strong>知识密集型推理:</strong> HotpotQA, 2WikiMultihopQA, Musique, WebWalker, Bamboogle。</li>
+                                <li><strong>深度搜索:</strong> GAIA, WebWalker, Humanity's Last Exam (HLE), xbench-DeepSearch。</li>
+                            </ul>
+                        </li>
+                         <li><strong>工具集 (Tools):</strong>
+                            <ul class="list-disc list-inside ml-4 mt-2">
+                                <li><strong>搜索引擎 (Search Engine):</strong> 使用 Bing Web Search API 获取网页片段和内容。</li>
+                                <li><strong>网页浏览器 (Web Browser Agent):</strong> 用于访问和解析网页链接，提取关键信息。</li>
+                                <li><strong>代码解释器 (Code Interpreter):</strong> 在沙箱环境中执行 Python 代码并返回结果。</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="section-subtitle">训练流程与超参数</h3>
+                    <p class="text-lg text-gray-600">
+                        实验遵循“冷启动 SFT + RL”范式，以避免 RL 初期阶段的奖励崩溃问题。
+                    </p>
+                    <ol class="mt-4 space-y-4 text-gray-600">
+                        <li><strong>1. 监督微调 (SFT) 阶段:</strong>
+                            <ul class="list-disc list-inside ml-4 mt-2">
+                                <li>使用 LLaMAFactory 框架和 Tool-Star 的 54K 训练样本进行 SFT。</li>
+                                <li>学习率 <span class="inline-katex">7 \times 10^{-6}</span>，Batch Size 128，训练 3 个 epoch。</li>
+                            </ul>
+                        </li>
+                        <li><strong>2. 强化学习 (RL) 阶段:</strong>
+                            <ul class="list-disc list-inside ml-4 mt-2">
+                                <li>基于 VERL 框架实现 ARPO。</li>
+                                <li><strong>对于 ARPO:</strong> 全局部署大小 (Global Rollout Size) M=16，初始采样大小 N=8，熵权重 <span class="inline-katex">\beta=0.2</span>，基础采样概率 <span class="inline-katex">\alpha=0.5</span>，分支阈值 <span class="inline-katex">\tau=0.5</span>。</li>
+                                <li><strong>训练数据:</strong> 对于深度推理任务使用 10K 样本，对于更具挑战的深度搜索任务，仅使用 1K 样本进行训练，以考验算法的效率。</li>
+                                <li><strong>奖励函数:</strong> 综合考虑了答案正确性、工具调用格式，以及一个鼓励多种工具协作的额外奖励 <span class="inline-katex">r_M</span>。</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" class="my-24 scroll-mt-24">
+            <h2 class="section-title text-center">实验结果与核心结论</h2>
+            <div class="space-y-12">
+                <div class="content-card">
+                    <h3 class="section-subtitle">在数学与知识推理任务上的表现</h3>
+                    <p class="text-lg text-gray-600 mb-6">
+                        在10个具有挑战性的推理任务上，ARPO 全面超越了包括 GRPO, DAPO, REINFORCE++ 在内的所有轨迹级 RL 基线算法。
+                    </p>
+                    <p class="text-center font-semibold text-gray-700">[论文 Table 1: 在10个推理任务上的整体性能]</p>
+                    <div class="overflow-x-auto mt-4">
+                        <div class="katex-display">
+                        $$
+                        \begin{array}{l|ccccc|ccccc|c}
+                        \hline
+                        \textbf{Method} & \textbf{AIME24} & \textbf{AIME25} & \textbf{MATH500} & \textbf{GSM8K} & \textbf{MATH} & \textbf{WebW.} & \textbf{HQA} & \textbf{2Wiki.} & \textbf{MuSiQ.} & \textbf{Bamb.} & \textbf{Avg.} \\
+                        \hline
+                        \text{Llama3.1-8B-Instruct} & 3.3 & 0.0 & 43.3 & 81.4 & 60.6 & 24.3 & 3.0 & 24.6 & 10.4 & 40.0 & 28.8 \\
+                        \text{+ GRPO} & 13.3 & 13.3 & 62.4 & 87.4 & 79.2 & 57.8 & 26.5 & 71.8 & 31.0 & 68.2 & 51.1 \\
+                        \textbf{+ ARPO} & \textbf{23.3} & \textbf{16.7} & \textbf{64.6} & \textbf{88.0} & \textbf{80.2} & \textbf{65.4} & \textbf{30.5} & \textbf{75.5} & \textbf{34.8} & \textbf{73.8} & \textbf{55.3} \\
+                        \hline
+                        \text{Qwen2.5-7B-Instruct} & 10.0 & 10.0 & 70.6 & 90.2 & 82.0 & 12.2 & 2.0 & 12.6 & 6.6 & 24.0 & 32.0 \\
+                        \text{+ GRPO} & 23.3 & 26.7 & 78.0 & 92.8 & 87.8 & 59.0 & 22.0 & 76.1 & 30.6 & 68.4 & 56.5 \\
+                        \textbf{+ ARPO} & \textbf{30.0} & \textbf{30.0} & \textbf{78.8} & 92.2 & \textbf{88.8} & 58.8 & \textbf{26.0} & 76.1 & \textbf{31.1} & \textbf{71.5} & \textbf{58.3} \\
+                        \hline
+                        \end{array}
+                        $$
+                        </div>
+                    </div>
+                    <p class="mt-6 text-lg text-gray-600"><strong>核心结论:</strong> ARPO 在不同模型底座上都展现了强大的泛化能力和性能提升，平均准确率提升约 2-4%，证明了其算法设计的优越性。</p>
+                </div>
+
+                <div class="content-card">
+                    <h3 class="section-subtitle">在深度搜索任务上的表现与工具调用效率</h3>
+                    <div class="grid md:grid-cols-2 gap-8 items-start">
+                        <div>
+                            <p class="text-lg text-gray-600 mb-6">
+                                在需要频繁与网络交互的深度搜索任务中，ARPO 的优势更加明显。仅用 1K 样本训练，Qwen3-14B + ARPO 在 GAIA 和 HLE 等高难度基准上取得了惊人的成绩，远超 GPT-4o 等强力闭源模型。
+                            </p>
+                             <p class="text-center font-semibold text-gray-700">[论文 Table 2 节选: 深度搜索任务性能]</p>
+                             <div class="overflow-x-auto mt-4">
+                                <div class="katex-display">
+                                $$
+                                \begin{array}{l|c|c|c}
+                                \hline
+                                \textbf{Method (Qwen3-14B)} & \textbf{GAIA Avg.} & \textbf{HLE Avg.} & \textbf{Overall Avg.} \\
+                                \hline
+                                \text{+ GRPO} & 36.9 & 8.6 & 27.0 \\
+                                \textbf{+ ARPO} & \textbf{43.7} & \textbf{10.0} & \textbf{32.0} \\
+                                \hline
+                                \end{array}
+                                $$
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-lg text-gray-600 mb-6">
+                                更重要的是，ARPO 实现了更高的<strong>工具调用效率</strong>。
+                            </p>
+                            <p class="text-center font-semibold text-gray-700">[论文 Figure 7 占位符: 工具调用效率对比]</p>
+                            <img src="https://placehold.co/600x400/e2e8f0/4a5568?text=Tool-Call+Efficiency+Analysis" alt="工具调用效率对比" class="w-full h-auto rounded-lg mt-4">
+                            <p class="mt-6 text-lg text-gray-600"><strong>核心结论:</strong> 与 GRPO 相比，ARPO 在达到更优性能的同时，所需的工具调用次数仅为前者的一半。这得益于其智能的、按需探索的机制，极大地节省了训练成本，为将 Agentic RL 应用于真实动态环境提供了可行的方案。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reviewer's Comments Section -->
+        <section id="review" class="my-24 scroll-mt-24">
+            <h2 class="section-title text-center">我的评论 (Reviewer's Take)</h2>
+            <div class="content-card">
+                <p class="text-lg text-gray-600 leading-relaxed mb-8">
+                    作为一名 AI 研究员，我认为这篇工作非常扎实且具有启发性。它不仅仅是提出了一个新算法，更重要的是，它从一个新颖的视角——“熵”或者说“不确定性”——来审视和优化智能体与环境的交互过程。这为 Agentic RL 的研究开辟了一个有趣的方向。
+                </p>
+                <div class="pro-con-grid">
+                    <div>
+                        <h4 class="reviewer-comment-title">优势 (Strengths)</h4>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><strong>洞察新颖:</strong> 将工具交互后的“熵增”现象作为算法设计的核心驱动力，直观且有效，具有很好的解释性。</li>
+                            <li><strong>性能卓越:</strong> 实验覆盖面广，在多个基准和模型上稳定地超越了主流 RL 算法，结果令人信服。</li>
+                            <li><strong>高效率:</strong> “少花钱，多办事”，以一半的工具调用预算取得更优性能，这一点在实际应用中具有巨大的价值。</li>
+                            <li><strong>理论支撑:</strong> 提供了广义策略梯度定理 (GPG Theorem) 作为理论基础，增加了工作的严谨性。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="reviewer-comment-title">不足与改进方向 (Weaknesses & Future Work)</h4>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><strong>对熵的依赖:</strong> 算法的核心依赖于“熵增”这一启发式观察。在某些场景下，最优决策点可能并不伴随着高熵。未来的工作可以探索更鲁棒的、多维度的“探索价值”衡量标准。</li>
+                            <li><strong>超参数敏感性:</strong> 算法引入了如熵权重 <span class="inline-katex">\beta</span>、分支阈值 <span class="inline-katex">\tau</span> 等新超参数，从论文的消融实验看，模型性能对这些参数的设置较为敏感，可能需要仔细调优。</li>
+                            <li><strong>更复杂的交互:</strong> 目前的工具交互主要是“请求-响应”模式。未来可以研究如何将 ARPO 扩展到更复杂的场景，例如需要并行调用多个工具、或者工具之间存在依赖关系的情况。</li>
+                            <li><strong>与其他方法的结合:</strong> 能否将 ARPO 的思想与 Process Reward Model (PRM) 或 Reflection 等机制结合，实现对推理过程更细致的监督和优化，是一个值得探索的方向。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white">
+        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 text-center">
+            <p>由 Gemini 为您生成的论文深度解析页面。</p>
+            <p class="text-xs text-gray-400 mt-2">本文档内容基于学术论文《Agentic Reinforced Policy Optimization》 (Dong et al., 2025) 生成，仅供学习和研究使用。</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                // Trust function used to prevent command injection.
+                trust: (context) => ['\\htmlId'].includes(context.command),
+                // Render AMSmath environments
+                macros: {
+                  "\\RR": "\\mathbb{R}",
+                  "\\NN": "\\mathbb{N}",
+                  "\\ZZ": "\\mathbb{Z}"
+                }
+            });
+            // Custom handling for inline katex to avoid line breaks
+            const inlineKatexElements = document.querySelectorAll('.inline-katex');
+            inlineKatexElements.forEach(el => {
+                const source = el.textContent;
+                try {
+                    katex.render(source, el, {
+                        throwOnError: false,
+                        displayMode: false
+                    });
+                } catch (e) {
+                    el.textContent = source;
+                    console.error(e);
+                }
+            });
+        });
+
+        function showTab(tabId) {
+            // Hide all tab panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Show the selected tab panel
+            document.getElementById(tabId).classList.remove('hidden');
+            // Activate the selected tab button
+            document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add('active');
+        }
+    </script>
+</body>
+</html>
