@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeneAgent 论文深度解析</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax for LaTeX rendering -->
+    <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+
+    <!-- Custom Styles for Apple-like aesthetics -->
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f9fafb; /* Light mode background */
+            color: #1f2937; /* Light mode text */
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #000000;
+                color: #e5e7eb;
+            }
+            .section-card {
+                background-color: #111827;
+                border-color: #374151;
+            }
+            .table-header {
+                background-color: #1f2937;
+            }
+            .tab-inactive {
+                border-color: #374151;
+            }
+            .tab-active {
+                border-color: #3b82f6;
+                color: #3b82f6;
+            }
+            .lead {
+                color: #9ca3af;
+            }
+        }
+        .lead {
+            color: #4b5563;
+        }
+        .section-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 1.5rem; /* More rounded corners */
+            padding: 2.5rem;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+        }
+        h2 {
+            font-size: 1.875rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+            margin-bottom: 0.5rem;
+        }
+        .tab-button {
+            transition: all 0.2s ease-in-out;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            border-bottom-width: 2px;
+            cursor: pointer;
+        }
+        .tab-inactive {
+            border-color: #e5e7eb;
+            color: #6b7280;
+        }
+        @media (prefers-color-scheme: dark) {
+            .tab-inactive {
+                color: #9ca3af;
+            }
+        }
+        .tab-active {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* [FIX] MathJax inline formula fix (user provided) */
+        /* This rule is critical to prevent inline formulas from creating unwanted line breaks.
+           It targets MathJax containers that are NOT block-level displays, ensuring they
+           flow seamlessly with the surrounding text. */
+        mjx-container:not([display="true"]) {
+            display: inline-block;
+            vertical-align: baseline;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100">
+
+    <div class="max-w-4xl mx-auto px-4 py-12 md:py-20">
+
+        <!-- Header -->
+        <header class="text-center mb-16">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+                GeneAgent: 自我验证的基因集分析语言代理
+            </h1>
+            <p class="lead text-lg md:text-xl max-w-3xl mx-auto">
+                一篇关于如何利用大型语言模型与生物学数据库交互，以减少信息幻觉并提升基因功能分析可靠性的深度解析。
+            </p>
+        </header>
+
+        <!-- 1. 研究动机 (Motivation) -->
+        <section id="motivation" class="section-card">
+            <h2>1. 研究动机</h2>
+            <p class="lead mb-8">探索驱动这项研究的核心问题与洞察。</p>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">核心问题</h3>
+                    <p>大型语言模型（LLMs）在为基因集生成功能性描述方面展现了巨大潜力，但它们经常产生事实不正确的内容，即“幻觉”（Hallucinations）。这在对准确性要求极高的科学研究领域是致命的缺陷。</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">问题重要性</h3>
+                    <p>基因集分析是理解复杂生物过程的关键。如果分析工具提供的结论是虚构或不准确的，将会严重误导科研方向，浪费宝贵的研究资源，并阻碍客观的知识发现。</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">核心洞察</h3>
+                    <p>作者的核心洞察是：不应让 LLM 在真空中“自我反思”，而应构建一个能动的“代理”（Agent），使其能够主动与外部的、由专家维护的权威生物学数据库进行交互，利用真实世界的数据来验证和修正自己生成的结论。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 灵感溯源 (Idea Genesis) -->
+        <section id="idea-genesis" class="section-card">
+            <h2>2. 灵感溯源</h2>
+            <p class="lead mb-8">追溯 GeneAgent 方法论从宏观问题到具体实现的逻辑链条。</p>
+            <div class="relative pl-8 border-l-2 border-gray-200 dark:border-gray-700 space-y-10">
+                <div class="relative">
+                    <div class="absolute -left-10 top-1 w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <h3 class="font-semibold text-lg">宏观挑战</h3>
+                    <p>如何让 LLM 在进行基因集功能注释时，既能发挥其强大的推理和语言生成能力，又能保证结果的科学准确性？</p>
+                </div>
+                <div class="relative">
+                    <div class="absolute -left-10 top-1 w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <h3 class="font-semibold text-lg">观察与假设</h3>
+                    <p>LLM 的“幻觉”源于其内部知识的局限性和不确定性。而生物学领域拥有大量经过几十年积累、由专家精心维护的结构化数据库。假设：如果能将 LLM 的推理能力与这些外部数据库的“事实”连接起来，就能有效抑制幻觉。</p>
+                </div>
+                <div class="relative">
+                    <div class="absolute -left-10 top-1 w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <h3 class="font-semibold text-lg">方法论形成</h3>
+                    <p>设计一个代理框架（Agent Framework）。这个代理不仅仅是调用 API，而是一个拥有完整工作流的系统：首先，让 LLM 提出一个初步假设（生成过程名称）；然后，将该假设分解为可验证的“声明”（Claims）；接着，通过 API 查询外部数据库来验证这些声明；最后，根据验证报告来修改或确认最初的假设。</p>
+                </div>
+                 <div class="relative">
+                    <div class="absolute -left-10 top-1 w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <h3 class="font-semibold text-lg">最终方案：GeneAgent</h3>
+                    <p>最终形成了 GeneAgent 的四步迭代流程：生成（Generation）-> 自我验证（Self-verification）-> 修改（Modification）-> 总结（Summarization）。这个闭环系统能够自主地、迭代地提升输出结果的质量和可信度。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 数学表示与建模 (Mathematical Modeling) -->
+        <section id="mathematical-modeling" class="section-card">
+            <h2>3. 数学表示与建模</h2>
+            <p class="lead mb-8">论文的核心在于系统框架，其数学建模主要体现在评估指标上。</p>
+            <div>
+                <h3 class="font-semibold text-lg mb-4">关键符号定义</h3>
+                <ul class="list-disc list-inside space-y-2">
+                    <li>$D = \{g_i\}_{i=1}^{N}$: 一个包含 $N$ 个基因的基因集。</li>
+                    <li>$P$: 由模型为基因集 $D$ 生成的生物过程名称 (Process Name)。</li>
+                    <li>$A$: 伴随过程名称生成的分析性文本 (Analytical Texts)。</li>
+                    <li>$G$: 该基因集的标准答案或“金标准”功能名称 (Ground Truth)。</li>
+                    <li>$\mathcal{R}_p, \mathcal{R}_A$: 分别针对过程名称和分析性文本的验证报告 (Verification Report)。</li>
+                </ul>
+            </div>
+            <div class="mt-8">
+                <h3 class="font-semibold text-lg mb-4">核心评估公式</h3>
+                <p>论文使用 ROUGE (Recall-Oriented Understudy for Gisting Evaluation) 分数来衡量生成名称与标准答案在词汇层面的重叠度。</p>
+                <div class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <p class="font-mono text-sm"><strong>ROUGE-N (基于 n-gram):</strong></p>
+                    $$ \text{ROUGE-N} = \frac{\sum_{S \in \{\text{Ref}\}} \sum_{\text{gram}_n \in S} \text{Count}_{\text{match}}(\text{gram}_n)}{\sum_{S \in \{\text{Ref}\}} \sum_{\text{gram}_n \in S} \text{Count}(\text{gram}_n)} $$
+                    <p class="mt-4 font-mono text-sm"><strong>ROUGE-L (基于最长公共子序列 LCS):</strong></p>
+                    $$ R_{lcs} = \frac{\text{LCS}(\text{ref, hyp})}{m}, \quad P_{lcs} = \frac{\text{LCS}(\text{ref, hyp})}{n} $$
+                    $$ \text{ROUGE-L} = \frac{(1 + \beta^2) R_{lcs} P_{lcs}}{R_{lcs} + \beta^2 P_{lcs}} $$
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">其中 'ref' 是标准答案，'hyp' 是生成结果，$m, n$ 分别是它们的长度。</p>
+                </div>
+                <p class="mt-4">此外，论文还使用基于 MedCPT 模型的余弦相似度来评估生成名称和标准答案之间的语义相似性。</p>
+            </div>
+        </section>
+
+        <!-- 4. 核心机制/方法论 (Core Methodology) -->
+        <section id="core-methodology" class="section-card">
+            <h2>4. 核心机制/方法论</h2>
+            <p class="lead mb-8">通过交互式选项卡深入了解 GeneAgent 的四阶段工作流。</p>
+            
+            <!-- Tabs Navigation -->
+            <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+                <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button onclick="changeTab(event, 'generation')" class="tab-button tab-active">1. 生成</button>
+                    <button onclick="changeTab(event, 'verification')" class="tab-button tab-inactive">2. 自我验证</button>
+                    <button onclick="changeTab(event, 'modification')" class="tab-button tab-inactive">3. 修改</button>
+                    <button onclick="changeTab(event, 'summarization')" class="tab-button tab-inactive">4. 总结</button>
+                </nav>
+            </div>
+
+            <!-- Tabs Content -->
+            <div>
+                <div id="generation" class="tab-content active">
+                    <h3 class="font-semibold text-lg mb-2">阶段一: 生成 (Generation)</h3>
+                    <p>给定一个用户输入的基因集，GeneAgent 首先使用一个经过精心设计的 Prompt，驱动底层的 GPT-4 模型生成一个初步的、未经证实的生物过程名称（$P_{ini}$）和相应的分析叙述（$A_{ini}$）。这相当于模型的“第一印象”或初步假设。</p>
+                    <div class="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                        <p class="font-mono text-sm">[论文 Figure 1b 占位符: Generation 步骤图示]</p>
+                        <p class="text-xs mt-2 text-gray-500">此步骤旨在快速产出一个可供后续验证的候选答案。</p>
+                    </div>
+                </div>
+                <div id="verification" class="tab-content">
+                    <h3 class="font-semibold text-lg mb-2">阶段二: 自我验证 (Self-verification)</h3>
+                    <p>这是 GeneAgent 的核心。它启动一个名为 `selfVeri-Agent` 的子代理。该代理执行以下操作：</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li>从初步的分析中提取出需要验证的关键“声明”（Claims）。</li>
+                        <li>识别声明中的基因符号和过程名称。</li>
+                        <li>通过 g:Profiler, Enrichr, E-utils 等多种 API，自主查询 GO, KEGG, Reactome, PubMed 等18个外部生物学数据库。</li>
+                        <li>根据查询到的证据，将每个声明标记为“支持”、“部分支持”或“驳斥”，并生成一份详细的验证报告（$\mathcal{R}$）。</li>
+                    </ul>
+                </div>
+                <div id="modification" class="tab-content">
+                    <h3 class="font-semibold text-lg mb-2">阶段三: 修改 (Modification)</h3>
+                    <p>GeneAgent 接收并分析来自验证阶段的报告。如果初步的名称或分析被报告“驳斥”或“部分支持”，模型会接收到新的指令，要求它基于验证报告中的证据来修正原有的输出，生成一个修改后的过程名称（$P_{mod}$）和分析叙述（$A_{mod}$）。这个过程是迭代的，修改后的内容会再次进入验证循环，确保最终结果的可靠性。</p>
+                </div>
+                <div id="summarization" class="tab-content">
+                    <h3 class="font-semibold text-lg mb-2">阶段四: 总结 (Summarization)</h3>
+                    <p>在经过一轮或多轮“验证-修改”循环后，GeneAgent 会整合所有的验证报告和中间结果。最后，它会根据最终确认的信息，生成一个最终的、经过验证的生物过程名称（$P$）和一份全面的分析报告（$A$），作为最终输出交付给用户。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. 实验设计 (Experimental Design) -->
+        <section id="experimental-design" class="section-card">
+            <h2>5. 实验设计</h2>
+            <p class="lead mb-8">为保证研究的可复现性，论文详细列出了实验配置。</p>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">基础模型</h3>
+                    <p>使用微软 Azure OpenAI API 提供的 GPT-4 (版本 20230613)，知识截止日期为2021年9月。实验中将温度参数设为0以保证结果的可复现性。</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">数据集</h3>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>GO (Gene Ontology):</strong> 1000个基因集，来自文献管理。</li>
+                        <li><strong>NeST:</strong> 50个基因集，来自人类癌症蛋白质的蛋白质组学分析。</li>
+                        <li><strong>MSigDB:</strong> 56个基因集，代表不同的分子功能。</li>
+                        <li><strong>真实世界案例:</strong> 7个源自小鼠黑色素瘤细胞系的全新基因集。</li>
+                    </ul>
+                     <p class="text-sm mt-2 text-gray-500">所有评估数据集均在模型知识截止日期（2021年9月）之后发布，以避免数据泄露。</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">评估流程与基线</h3>
+                    <p>将 GeneAgent 的性能与“标准 GPT-4”进行比较。此处的“标准 GPT-4”指的是使用先前研究（Hu et al.）提出的 Prompt，但不经过 GeneAgent 的自我验证流程。评估指标包括 ROUGE 分数、基于 MedCPT 的语义相似度以及领域专家的人工评估。</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">关键工具与 API</h3>
+                    <p>GeneAgent 通过以下 API 与外部数据库交互以进行自我验证：</p>
+                     <div class="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                        <p class="font-mono text-sm">[论文 Figure 3c 占位符: 验证过程中使用的数据库频率图]</p>
+                        <p class="text-xs mt-2 text-gray-500">该图表展示了 g:Profiler, Enrichr, E-utils, AgentAPI 等接口及其后端数据库（如 GO, KEGG, Reactome, PubMed, STRING 等）在验证过程中的使用频率，突显了系统对多样化外部知识源的依赖。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. 实验结果与结论 (Results & Conclusions) -->
+        <section id="results-conclusions" class="section-card">
+            <h2>6. 实验结果与结论</h2>
+            <p class="lead mb-8">数据展示了 GeneAgent 相对于基线模型的显著优势。</p>
+            
+            <h3 class="font-semibold text-lg mb-4">核心实验结果</h3>
+            <p class="mb-4">在对7个新的小鼠黑色素瘤基因集的真实世界案例研究中，GeneAgent 不仅生成了更准确的过程名称，其分析也获得了领域专家的更高评价。下表节选自论文 Table 3，展示了部分结果对比。</p>
+            
+            <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                    <thead class="bg-gray-100 dark:bg-gray-800 table-header">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left font-medium">基因集 ID</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium">GPT-4 (基线) 输出</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium">GeneAgent 输出</th>
+                            <th scope="col" class="px-4 py-3 text-left font-medium">专家评估</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <tr>
+                            <td class="px-4 py-3 font-mono">mmu04015 (HA-S)</td>
+                            <td class="px-4 py-3">MAPK/ERK pathway regulation</td>
+                            <td class="px-4 py-3 font-semibold text-green-600 dark:text-green-400">Rap1 signaling pathway</td>
+                            <td class="px-4 py-3 text-green-600 dark:text-green-400">GeneAgent 更优</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 font-mono">mmu05100 (HA-S)</td>
+                            <td class="px-4 py-3">Caveolae-mediated endocytosis...</td>
+                            <td class="px-4 py-3 font-semibold text-green-600 dark:text-green-400">Bacterial invasion of epithelial cells</td>
+                            <td class="px-4 py-3 text-green-600 dark:text-green-400">GeneAgent 更优</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 font-mono">mmu05022 (LA-S)</td>
+                            <td class="px-4 py-3">Oxidative phosphorylation and neurodegeneration</td>
+                            <td class="px-4 py-3 font-semibold text-green-600 dark:text-green-400">Neurodegeneration and respiratory chain complex</td>
+                            <td class="px-4 py-3 text-green-600 dark:text-green-400">GeneAgent 更优</td>
+                        </tr>
+                         <tr>
+                            <td class="px-4 py-3 font-mono">mmu03010 (HA-S)</td>
+                            <td class="px-4 py-3">Ribosomal protein synthesis</td>
+                            <td class="px-4 py-3">Cytosolic ribosome</td>
+                            <td class="px-4 py-3 text-red-600 dark:text-red-400">两者均不理想</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-8 space-y-6">
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">核心结论</h3>
+                    <p>实验数据一致表明，通过与领域数据库进行自主交互和自我验证，GeneAgent 在生成生物过程名称的准确性（通过 ROUGE 和语义相似度衡量）上，系统性地、显著地优于未经此流程的标准 GPT-4。自我验证机制能有效减少乃至消除幻觉。</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">深刻见解 (Insights)</h3>
+                    <p>这项研究的成功揭示了一个更深层次的见解：未来高级 AI 系统的发展方向，可能不只是单纯地扩大模型规模，而是要构建能够与外部权威知识源进行动态、智能交互的“代理”系统。这种“LLM + Tools”的范式，将 LLM 的通用推理能力与特定领域的精确事实相结合，是实现可信、可靠人工智能的关键路径。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. 你的评论 (Reviewer's Take) -->
+        <section id="reviewers-take" class="section-card">
+            <h2>7. 评审人视角</h2>
+            <p class="lead mb-8">以批判性眼光分析该研究的贡献、潜在局限与未来前景。</p>
+            <div class="space-y-8">
+                <div class="p-6 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+                    <h3 class="font-semibold text-lg text-green-800 dark:text-green-300 mb-2">优势 (Strengths)</h3>
+                    <ul class="list-disc list-inside space-y-2 text-green-700 dark:text-green-400">
+                        <li><strong>创新且实用：</strong> 针对 LLM 在科学应用中的核心痛点——“幻觉”，提出了一个创新且高度实用的解决方案。该框架具有很强的通用性。</li>
+                        <li><strong>坚实的实证：</strong> 实验设计严谨，使用了多个不同来源、且发布于模型知识库之外的数据集进行评估，并引入了真实世界案例和领域专家评审，使得结论非常可信。</li>
+                        <li><strong>范式转变：</strong> 将 LLM 从一个封闭的“知识库”转变为一个开放的、能动的“研究代理”，展示了下一代科研工具的雏形，意义深远。</li>
+                    </ul>
+                </div>
+                <div class="p-6 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
+                    <h3 class="font-semibold text-lg text-yellow-800 dark:text-yellow-300 mb-2">潜在不足 (Weaknesses)</h3>
+                    <ul class="list-disc list-inside space-y-2 text-yellow-700 dark:text-yellow-400">
+                        <li><strong>依赖数据库质量：</strong> GeneAgent 的性能上限受限于其所能访问的数据库的完备性和准确性。对于非常新颖、尚未被数据库收录的生物学功能，该方法可能会因无法验证而错误地“驳斥”一个正确的假设。</li>
+                        <li><strong>API 调用成本与延迟：</strong> 频繁地与多个外部 API 交互可能会带来显著的计算成本和时间延迟，这可能影响其在需要快速响应的场景中的应用。</li>
+                        <li><strong>错误传递风险：</strong> 虽然旨在减少幻觉，但如果 API 返回了错误或过时的信息，或者 LLM 错误地解读了验证报告，错误仍然可能被传递甚至放大。</li>
+                    </ul>
+                </div>
+                <div class="p-6 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+                    <h3 class="font-semibold text-lg text-blue-800 dark:text-blue-300 mb-2">未来方向 (Future Work)</h3>
+                    <ul class="list-disc list-inside space-y-2 text-blue-700 dark:text-blue-400">
+                        <li><strong>扩展知识源：</strong> 整合更多样化的数据库，甚至包括非结构化的文献文本，让代理能够进行更全面的“背景调查”。</li>
+                        <li><strong>智能工具选择：</strong> 开发更智能的决策模块，让代理能根据声明的性质，动态地选择最合适的 API 和数据库进行查询，以提高效率和准确性。</li>
+                        <li><strong>跨领域应用：</strong> 将 GeneAgent 的核心思想和框架应用到其他同样需要高事实准确性的领域，如临床诊断、法律文书分析、金融报告生成等。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // JavaScript for tab functionality
+        function changeTab(event, tabID) {
+            // Get all tab content elements and hide them
+            let tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(function(content) {
+                content.classList.remove('active');
+            });
+
+            // Get all tab button elements and set them to inactive
+            let tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(function(button) {
+                button.classList.remove('tab-active');
+                button.classList.add('tab-inactive');
+            });
+
+            // Show the selected tab content
+            document.getElementById(tabID).classList.add('active');
+
+            // Set the clicked tab button to active
+            event.currentTarget.classList.remove('tab-inactive');
+            event.currentTarget.classList.add('tab-active');
+        }
+    </script>
+
+</body>
+</html>
